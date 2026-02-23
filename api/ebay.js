@@ -5,7 +5,6 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // eBay marketplace deletion notification endpoint
   if (req.method === "GET" && req.query.challenge_code) {
     const challengeCode = req.query.challenge_code;
     const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || "watchhunter123456789012345678901";
@@ -17,15 +16,11 @@ export default async function handler(req, res) {
     return res.status(200).json({ challengeResponse: hash });
   }
 
-  // Handle deletion notifications (we just acknowledge them)
-  if (req.method === "POST") {
-    return res.status(200).json({ acknowledged: true });
-  }
+  if (req.method === "POST") return res.status(200).json({ acknowledged: true });
 
   const EBAY_APP_ID  = process.env.EBAY_APP_ID;
   const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
   const EBAY_ENV     = process.env.EBAY_ENV || "SANDBOX";
-
   const BASE = EBAY_ENV === "SANDBOX"
     ? "https://api.sandbox.ebay.com"
     : "https://api.ebay.com";
@@ -45,21 +40,26 @@ export default async function handler(req, res) {
     if (!token) throw new Error("No token: " + JSON.stringify(tokenData));
 
     const { query, maxPrice } = req.query;
-    const filters = ["buyingOptions:{AUCTION}"];
+
+    const filters = [
+      "buyingOptions:{AUCTION}",
+      "itemLocationCountry:GB",
+    ];
     if (maxPrice) filters.push(`price:[..${maxPrice}],priceCurrency:GBP`);
 
     const params = new URLSearchParams({
       q: query || "vintage watch",
       filter: filters.join(","),
       sort: "newlyListed",
-      limit: "20",
+      limit: "50",
     });
 
     const browseRes = await fetch(`${BASE}/buy/browse/v1/item_summary/search?${params}`, {
       headers: {
         "Authorization": `Bearer ${token}`,
         "X-EBAY-C-MARKETPLACE-ID": "EBAY_GB",
-        "X-EBAY-C-ENDUSERCTX": "contextualLocation=country%3DGB",
+        "X-EBAY-C-ENDUSERCTX": "contextualLocation=country%3DGB%2Czip%3DSW1A1AA",
+        "Accept-Language": "en-GB",
       },
     });
     const browseData = await browseRes.json();
