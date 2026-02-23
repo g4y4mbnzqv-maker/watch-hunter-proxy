@@ -1,1 +1,7 @@
-
+{
+  "functions": {
+    "api/ebay.js": {
+      "runtime": "nodejs20.x"
+    }
+  }
+}
