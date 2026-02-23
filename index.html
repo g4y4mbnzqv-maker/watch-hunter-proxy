@@ -128,6 +128,20 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
 
 .footer { margin-top:22px; text-align:center; }
 .cta { display:inline-block; padding:12px 30px; background:#d97706; border-radius:12px; color:#fff; font-size:11px; letter-spacing:1.5px; text-decoration:none; font-family:monospace; font-weight:500; transition:all 0.18s; box-shadow:0 4px 16px rgba(217,119,6,0.28); }
+.sort-select { padding:8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; font-size:10px; font-family:monospace; color:#b8a898; cursor:pointer; outline:none; transition:all 0.18s; appearance:none; -webkit-appearance:none; background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘10’ height=‘6’%3E%3Cpath d=‘M0 0l5 6 5-6z’ fill=’%23c8bfb0’/%3E%3C/svg%3E”); background-repeat:no-repeat; background-position:right 10px center; padding-right:26px; }
+.sort-select:focus { border-color:#d97706; color:#b45309; }
+.search-input { width:100%; padding:11px 40px 11px 16px; background:#fff; border:1px solid #ddd5c8; border-radius:12px; font-family:‘DM Mono’,monospace; font-size:13px; color:#2c2416; outline:none; transition:all 0.18s; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
+.search-input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,0.1); }
+.search-input::placeholder { color:#c8bfb0; }
+.search-clear { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c8bfb0; font-size:16px; padding:0; display:none; }
+.search-clear.visible { display:block; }
+.search-go { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#d97706; border:none; border-radius:8px; cursor:pointer; color:#fff; font-size:11px; padding:4px 10px; font-family:monospace; }
+
+.brands { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.brand-pill { padding:6px 12px; border-radius:20px; font-size:10px; font-family:monospace; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; white-space:nowrap; }
+.brand-pill.active { background:#1c1410; border-color:#1c1410; color:#fff; }
+.brand-pill:hover:not(.active) { border-color:#d97706; color:#b45309; }
+
 .cta:hover { background:#b45309; transform:translateY(-1px); }
 .footer-note { margin-top:10px; font-size:9px; color:#c8bfb0; }
 </style>
@@ -154,6 +168,26 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
   <div id="notifBanner"></div>
   <div id="alertLog"></div>
 
+  <!-- Custom search -->
+
+  <div class="search-wrap">
+    <input class="search-input" id="searchInput" type="text" placeholder="Search e.g. Seiko 6138, Omega Constellation…" oninput="onSearchInput()" onkeydown="if(event.key==='Enter')doSearch()" style="padding-right:70px">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="right:48px">✕</button>
+    <button class="search-go" onclick="doSearch()">Search</button>
+  </div>
+
+  <!-- Brand pills -->
+
+  <div class="brands">
+    <button class="brand-pill active" onclick="setBrand('all')">All</button>
+    <button class="brand-pill" onclick="setBrand('seiko')">Seiko</button>
+    <button class="brand-pill" onclick="setBrand('citizen')">Citizen</button>
+    <button class="brand-pill" onclick="setBrand('orient')">Orient</button>
+    <button class="brand-pill" onclick="setBrand('omega')">Omega</button>
+    <button class="brand-pill" onclick="setBrand('longines')">Longines</button>
+    <button class="brand-pill" onclick="setBrand('tissot')">Tissot</button>
+  </div>
+
   <!-- Tabs -->
 
   <div class="tabs">
@@ -167,6 +201,13 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
   <div class="controls">
     <button class="pill" id="snipeBtn" onclick="toggleSnipe()">⚡ Snipe mode OFF</button>
     <button class="pill" id="priceBtn" onclick="togglePrice()">£ Price cap</button>
+    <select class="sort-select" id="sortSelect" onchange="changeSort(this.value)">
+      <option value="score">Best deal</option>
+      <option value="ending">Ending soonest</option>
+      <option value="price_asc">Price: low–high</option>
+      <option value="price_desc">Price: high–low</option>
+      <option value="newest">Newly listed</option>
+    </select>
     <button class="refresh-btn" onclick="doFetch()">↻</button>
   </div>
 
@@ -231,6 +272,7 @@ const VALUE_SIGNALS = ["no reserve","nr","starting bid","0.99","1 bid","0 bids",
 const MARKET_VALUES_CACHE = {};
 
 let activeTab = 0, snipeMode = false, priceEnabled = false, maxPrice = 150;
+let activeBrand = "all", customSearch = "", sortMode = "score";
 let countdown = REFRESH_INTERVAL, countdownTimer = null;
 let currentAuctions = [], currentMV = {};
 let seenHotBuys = new Set(), seenSnipeAlerts = new Set();
@@ -440,7 +482,7 @@ function renderListings() {
   document.getElementById("statLowest").textContent = `£${Math.min(...currentAuctions.map(a=>a.price)).toFixed(2)}`;
   document.getElementById("stats").style.display = "flex";
   document.getElementById("footer").style.display = "block";
-  document.getElementById("ctaLink").href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(SEARCHES[activeTab].query)}&LH_Auction=1&LH_PrefLoc=1${priceEnabled?`&_udhi=${maxPrice}`:""}`;
+  document.getElementById("ctaLink").href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(baseQuery)}&LH_Auction=1&LH_PrefLoc=1${priceEnabled?`&_udhi=${maxPrice}`:""}`;
 }
 
 // ── Main fetch ────────────────────────────────────────────────────────────
@@ -460,11 +502,15 @@ async function doFetch(silent = false) {
   dot.className = "status-dot loading";
   txt.textContent = "fetching auctions…";
 
-  const query = SEARCHES[activeTab].query;
+  const baseQuery = customSearch
+    ? customSearch
+    : activeBrand !== "all"
+    ? `${activeBrand} vintage watch`
+    : SEARCHES[activeTab].query;
   let results = [], usedFallback = false;
 
   try {
-    results = await fetchListings(query, priceEnabled ? maxPrice : null);
+    results = await fetchListings(baseQuery, priceEnabled ? maxPrice : null);
     if (!results.length) throw new Error("No auction results for this search");
     document.getElementById("apiBanner").innerHTML = `<div class="banner live">✓ Live eBay UK data · Production</div>`;
     dot.className = "status-dot live";
@@ -481,7 +527,13 @@ async function doFetch(silent = false) {
   if (snipeMode) results = results.filter(a => parseMins(a.timeLeft) <= 120);
   results = results
     .map(a => ({...a, score: scoreWatch(a.title,a.price,a.bids,null)}))
-    .sort((a,b) => snipeMode ? parseMins(a.timeLeft)-parseMins(b.timeLeft) : b.score-a.score)
+    .sort((a,b) => {
+      if (sortMode === "ending" || snipeMode) return parseMins(a.timeLeft) - parseMins(b.timeLeft);
+      if (sortMode === "price_asc") return a.price - b.price;
+      if (sortMode === "price_desc") return b.price - a.price;
+      if (sortMode === "newest") return 0; // already sorted by newlyListed from API
+      return b.score - a.score; // default: best deal
+    })
     .slice(0, 7);
 
   currentAuctions = results;
@@ -548,6 +600,45 @@ function startCountdown() {
       doFetch(true);
     }
   }, 1000);
+}
+
+function changeSort(val) {
+  sortMode = val;
+  doFetch();
+}
+
+function setBrand(brand) {
+  activeBrand = brand;
+  customSearch = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("searchClear").className = "search-clear";
+  document.querySelectorAll(".brand-pill").forEach(el => {
+    el.className = "brand-pill" + (el.textContent.toLowerCase() === brand || (brand==="all" && el.textContent==="All") ? " active" : "");
+  });
+  startCountdown();
+  doFetch();
+}
+
+function onSearchInput() {
+  const val = document.getElementById("searchInput").value;
+  document.getElementById("searchClear").className = "search-clear" + (val ? " visible" : "");
+}
+
+function doSearch() {
+  const val = document.getElementById("searchInput").value.trim();
+  if (!val) return;
+  customSearch = val;
+  activeBrand = "all";
+  document.querySelectorAll(".brand-pill").forEach(el => el.className = "brand-pill" + (el.textContent==="All"?" active":""));
+  startCountdown();
+  doFetch();
+}
+
+function clearSearch() {
+  customSearch = "";
+  document.getElementById("searchInput").value = "";
+  document.getElementById("searchClear").className = "search-clear";
+  doFetch();
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────
