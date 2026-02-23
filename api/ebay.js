@@ -5,6 +5,23 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
+  // eBay marketplace deletion notification endpoint
+  if (req.method === "GET" && req.query.challenge_code) {
+    const challengeCode = req.query.challenge_code;
+    const verificationToken = process.env.EBAY_VERIFICATION_TOKEN || "watchhunter123456789012345678901";
+    const endpoint = `https://watch-hunter-proxy.vercel.app/api/ebay`;
+    const hash = require("crypto")
+      .createHash("sha256")
+      .update(challengeCode + verificationToken + endpoint)
+      .digest("hex");
+    return res.status(200).json({ challengeResponse: hash });
+  }
+
+  // Handle deletion notifications (we just acknowledge them)
+  if (req.method === "POST") {
+    return res.status(200).json({ acknowledged: true });
+  }
+
   const EBAY_APP_ID  = process.env.EBAY_APP_ID;
   const EBAY_CERT_ID = process.env.EBAY_CERT_ID;
   const EBAY_ENV     = process.env.EBAY_ENV || "SANDBOX";
