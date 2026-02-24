@@ -7,676 +7,530 @@
 <title>Vintage Watch Deal Hunter</title>
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: linear-gradient(150deg, #f5f0e6 0%, #ede8db 100%); min-height: 100vh; font-family: 'DM Mono', monospace; padding: 32px 16px; }
-  .container { max-width: 560px; margin: 0 auto; animation: fadeUp 0.5s ease; }
-  @keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes urgentPulse { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
-  @keyframes shimmerIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:linear-gradient(150deg,#f5f0e6 0%,#ede8db 100%); min-height:100vh; font-family:'DM Mono',monospace; padding:32px 16px; }
+.container { max-width:560px; margin:0 auto; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+@keyframes shimIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
-h1 { font-family: ‘Lora’, serif; font-size: 32px; font-weight: 700; color: #1c1410; line-height: 1.08; letter-spacing: -0.5px; }
-h1 span { color: #d97706; }
-.subtitle { margin-top: 6px; font-size: 11px; color: #b8a898; }
-
-.status-dot { width:7px; height:7px; border-radius:50%; display:inline-block; transition:all 0.3s; }
-.status-dot.loading { background:#d97706; box-shadow:0 0 0 3px #fef3c7; }
-.status-dot.live { background:#16a34a; box-shadow:0 0 0 3px #dcfce7; }
-.status-dot.fallback { background:#d97706; box-shadow:0 0 0 3px #fef3c7; }
+h1 { font-family:‘Lora’,serif; font-size:32px; font-weight:700; color:#1c1410; line-height:1.08; letter-spacing:-0.5px; }
+h1 span { color:#d97706; }
 
 .status-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.dot { width:7px; height:7px; border-radius:50%; display:inline-block; transition:all 0.3s; background:#ccc; }
+.dot.loading { background:#d97706; box-shadow:0 0 0 3px #fef3c7; }
+.dot.live    { background:#16a34a; box-shadow:0 0 0 3px #dcfce7; }
+.dot.warn    { background:#f59e0b; box-shadow:0 0 0 3px #fef3c7; }
 .status-text { font-size:10px; color:#b8a898; letter-spacing:2px; text-transform:uppercase; }
 .status-time { font-size:9px; color:#c8bfb0; margin-left:auto; }
 
-.banner { margin-bottom:14px; padding:8px 14px; border-radius:10px; font-size:10px; font-family:monospace; }
+.banner { margin-bottom:12px; padding:8px 14px; border-radius:10px; font-size:10px; }
 .banner.live { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
-.banner.fallback { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
-.banner.error { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-.banner.notif-granted { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; display:flex; align-items:center; gap:6px; }
-.banner.notif-denied { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+.banner.warn { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.notif-ask { background:#fff; border:1px solid #e8e2d8; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.notif-ask h4 { font-family:‘Lora’,serif; font-size:11px; color:#2c2416; font-weight:600; }
+.notif-ask p  { font-size:10px; color:#b8a898; margin-top:2px; }
+.notif-ask button { padding:6px 14px; background:#d97706; color:#fff; border:none; border-radius:8px; font-size:10px; cursor:pointer; white-space:nowrap; }
+.banner.nok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+.banner.nno { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
 
-.notif-banner { background:#fff; border:1px solid #e8e2d8; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-.notif-banner .notif-text h4 { font-family:‘Lora’,serif; font-size:11px; color:#2c2416; font-weight:600; }
-.notif-banner .notif-text p { font-size:10px; color:#b8a898; margin-top:2px; }
-.notif-banner button { padding:6px 14px; background:#d97706; color:#fff; border:none; border-radius:8px; font-size:10px; cursor:pointer; font-family:monospace; white-space:nowrap; }
+.search-wrap  { position:relative; margin-bottom:12px; }
+.search-input { width:100%; padding:11px 90px 11px 16px; background:#fff; border:1px solid #ddd5c8; border-radius:12px; font-family:‘DM Mono’,monospace; font-size:13px; color:#2c2416; outline:none; transition:all 0.18s; }
+.search-input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,0.1); }
+.search-input::placeholder { color:#c8bfb0; }
+.search-go    { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:#d97706; border:none; border-radius:8px; cursor:pointer; color:#fff; font-size:10px; padding:5px 10px; }
+.search-clear { position:absolute; right:72px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c8bfb0; font-size:14px; display:none; }
+.search-clear.show { display:block; }
 
-.tabs { display:flex; gap:6px; margin-bottom:14px; }
-.tab { flex:1; padding:9px 4px; border-radius:10px; font-size:10px; cursor:pointer; transition:all 0.18s; font-family:monospace; border:1px solid #ddd5c8; background:transparent; color:#b8a898; }
-.tab.active { background:#fff; border:1.5px solid #d97706; color:#b45309; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
+.brands { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+.brand { padding:6px 12px; border-radius:20px; font-size:10px; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; }
+.brand.on { background:#1c1410; border-color:#1c1410; color:#fff; }
+.brand:hover:not(.on) { border-color:#d97706; color:#b45309; }
 
-.controls { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
-.pill { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:20px; cursor:pointer; font-size:10px; font-family:monospace; transition:all 0.18s; border:1px solid #ddd5c8; background:#fff; color:#b8a898; }
-.pill.active { background:#fffbeb; border-color:#f59e0b; color:#b45309; box-shadow:0 2px 10px rgba(245,158,11,0.15); }
-.pill.price-active { background:#fffbeb; border-color:#d97706; color:#b45309; }
-.pill .badge { background:#f59e0b; color:#fff; border-radius:10px; font-size:9px; padding:1px 6px; font-weight:700; }
-.refresh-btn { margin-left:auto; padding:8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; cursor:pointer; color:#b8a898; font-size:12px; transition:all 0.18s; }
+.tabs { display:flex; gap:6px; margin-bottom:12px; }
+.tab { flex:1; padding:9px 4px; border-radius:10px; font-size:10px; cursor:pointer; transition:all 0.18s; border:1px solid #ddd5c8; background:transparent; color:#b8a898; }
+.tab.on { background:#fff; border:1.5px solid #d97706; color:#b45309; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
+
+.controls { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+.pill { padding:8px 14px; border-radius:20px; cursor:pointer; font-size:10px; transition:all 0.18s; border:1px solid #ddd5c8; background:#fff; color:#b8a898; }
+.pill.on { background:#fffbeb; border-color:#f59e0b; color:#b45309; }
+.sort-sel { padding:8px 28px 8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; font-size:10px; color:#b8a898; cursor:pointer; outline:none; -webkit-appearance:none; appearance:none; background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘10’ height=‘6’%3E%3Cpath d=‘M0 0l5 6 5-6z’ fill=’%23c8bfb0’/%3E%3C/svg%3E”); background-repeat:no-repeat; background-position:right 10px center; }
+.refresh-btn { margin-left:auto; padding:8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; cursor:pointer; color:#b8a898; font-size:14px; transition:all 0.18s; }
 .refresh-btn:hover { color:#d97706; border-color:#d97706; }
 
-.slider-wrap { margin-bottom:14px; padding:14px 16px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; box-shadow:0 1px 4px rgba(0,0,0,0.04); animation:shimmerIn 0.2s ease; }
-.slider-header { display:flex; justify-content:space-between; margin-bottom:10px; }
-.slider-label { font-size:10px; color:#b8a898; letter-spacing:1px; }
+.slider-box { margin-bottom:12px; padding:14px 16px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; }
+.slider-hd  { display:flex; justify-content:space-between; margin-bottom:10px; }
+.slider-lbl { font-size:10px; color:#b8a898; letter-spacing:1px; }
 .slider-val { font-family:‘Lora’,serif; font-size:14px; font-weight:700; color:#d97706; }
 input[type=range] { -webkit-appearance:none; width:100%; height:4px; outline:none; cursor:pointer; border-radius:2px; }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#d97706; cursor:pointer; box-shadow:0 1px 6px rgba(217,119,6,0.35); }
 .slider-limits { display:flex; justify-content:space-between; margin-top:5px; font-size:9px; color:#c8bfb0; }
 
-.countdown-wrap { margin-bottom:16px; }
-.countdown-header { display:flex; justify-content:space-between; margin-bottom:5px; }
-.countdown-label { font-size:10px; color:#b8a898; letter-spacing:1px; }
-.countdown-time { font-size:10px; color:#d97706; }
-.countdown-track { height:3px; background:#ede8de; border-radius:2px; overflow:hidden; }
-.countdown-fill { height:100%; background:linear-gradient(90deg,#d97706,#fbbf24); border-radius:2px; transition:width 1s linear; }
+.cdwn { margin-bottom:14px; }
+.cdwn-hd    { display:flex; justify-content:space-between; margin-bottom:5px; }
+.cdwn-lbl   { font-size:10px; color:#b8a898; letter-spacing:1px; }
+.cdwn-t     { font-size:10px; color:#d97706; }
+.cdwn-track { height:3px; background:#ede8de; border-radius:2px; overflow:hidden; }
+.cdwn-fill  { height:100%; background:linear-gradient(90deg,#d97706,#fbbf24); border-radius:2px; transition:width 1s linear; }
 
-.stats { display:flex; margin-bottom:14px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04); animation:shimmerIn 0.3s ease; }
-.stat { flex:1; padding:12px 8px; text-align:center; border-right:1px solid #f0ebe0; }
+.stats    { display:flex; margin-bottom:12px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; overflow:hidden; }
+.stat     { flex:1; padding:12px 8px; text-align:center; border-right:1px solid #f0ebe0; }
 .stat:last-child { border-right:none; }
-.stat-val { font-family:‘Lora’,serif; font-size:19px; font-weight:700; }
-.stat-lbl { font-size:9px; color:#c8bfb0; letter-spacing:1px; margin-top:2px; }
+.stat-v   { font-family:‘Lora’,serif; font-size:19px; font-weight:700; }
+.stat-l   { font-size:9px; color:#c8bfb0; letter-spacing:1px; margin-top:2px; }
 
-.ai-box { margin-bottom:14px; padding:14px 16px; background:#fffbeb; border:1px solid #fde68a; border-radius:12px; animation:shimmerIn 0.4s ease; }
-.ai-label { font-size:9px; color:#b45309; letter-spacing:2px; margin-bottom:6px; }
-.ai-text { font-family:‘Lora’,serif; font-size:13px; color:#78350f; line-height:1.65; font-style:italic; }
-.ai-loading { display:flex; gap:8px; align-items:center; }
-.ai-spinner { width:12px; height:12px; border:2px solid #fde68a; border-top-color:#d97706; border-radius:50%; animation:spin 0.8s linear infinite; }
-.ai-loading-text { font-size:11px; color:#b45309; }
-
-.alert-log { margin-bottom:14px; }
-.alert-log-label { font-size:9px; color:#b8a898; letter-spacing:2px; margin-bottom:6px; }
-.alert-item { padding:8px 12px; border-radius:8px; font-size:10px; font-family:monospace; display:flex; align-items:center; gap:8px; margin-bottom:5px; }
-.alert-item.hot { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.alert-log  { margin-bottom:12px; }
+.alert-lbl  { font-size:9px; color:#b8a898; letter-spacing:2px; margin-bottom:6px; }
+.alert-item { padding:8px 12px; border-radius:8px; font-size:10px; display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.alert-item.hot   { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
 .alert-item.snipe { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
-.alert-title { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.alert-price { font-weight:700; }
-.alert-time { color:#c8bfb0; }
 
 .listings { display:flex; flex-direction:column; gap:8px; }
-.skeleton { height:95px; background:#fff; border-radius:14px; border:1px solid #e8e2d8; }
-
-.card { display:block; text-decoration:none; background:#fff; border:1px solid #e8e2d8; border-radius:14px; padding:14px 16px; transition:all 0.18s ease; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.04); animation:shimmerIn 0.25s ease both; }
+.skel { height:85px; background:#fff; border-radius:14px; border:1px solid #e8e2d8; margin-bottom:8px; }
+.card { display:block; text-decoration:none; background:#fff; border:1px solid #e8e2d8; border-radius:14px; padding:14px 16px; transition:all 0.18s; animation:shimIn 0.25s ease both; }
 .card:hover { background:#f8f4ee; transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.07); }
-.card.hot { border:1.5px solid #d97706; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
-.card.urgent { background:#fffbeb; border:1.5px solid #f59e0b; }
-.card-inner { display:flex; align-items:flex-start; gap:12px; }
-.card-rank { font-family:monospace; font-size:11px; color:#c8bfb0; min-width:20px; padding-top:2px; }
-.card-body { flex:1; min-width:0; }
-.card-badges { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; }
-.badge { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; font-family:monospace; white-space:nowrap; }
-.badge.hot-buy { background:#92400e; color:#fef3c7; letter-spacing:1px; }
-.badge.snipe-now { background:#fef2f2; color:#dc2626; animation:urgentPulse 1s infinite; }
-.badge.ending-soon { background:#fff7ed; color:#ea580c; }
-.badge.steal { background:#fef3c7; color:#92400e; }
-.badge.great { background:#d1fae5; color:#065f46; }
-.badge.good { background:#dbeafe; color:#1e40af; }
-.card-title { font-family:‘Lora’,serif; font-size:13.5px; color:#2c2416; line-height:1.45; margin-bottom:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-.card-prices { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
-.card-price { font-family:monospace; font-size:17px; font-weight:700; color:#1c1410; }
-.card-price.hot { color:#b45309; }
-.card-mktval { font-size:11px; color:#b8a898; font-family:monospace; display:flex; align-items:center; gap:4px; }
-.card-sep { font-size:11px; color:#c8bfb0; font-family:monospace; }
-.card-bids { font-size:11px; color:#b8a898; font-family:monospace; }
-.card-time { font-size:11px; font-family:monospace; margin-left:auto; color:#b8a898; }
-.card-time.urgent { color:#dc2626; font-weight:700; }
-.card-source { margin-top:5px; font-size:9px; color:#c8bfb0; font-family:monospace; }
-.card-arrow { color:#ddd8d0; font-size:16px; transition:all 0.18s; }
+.card.hc { border:1.5px solid #d97706; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
+.card.uc { background:#fffbeb; border:1.5px solid #f59e0b; }
+.card-inner  { display:flex; align-items:flex-start; gap:12px; }
+.card-rank   { font-size:11px; color:#c8bfb0; min-width:20px; padding-top:2px; }
+.card-body   { flex:1; min-width:0; }
+.card-badges { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; min-height:18px; }
+.bdg         { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; }
+.bdg.hot     { background:#92400e; color:#fef3c7; letter-spacing:1px; }
+.bdg.snipe   { background:#fef2f2; color:#dc2626; animation:pulse 1s infinite; }
+.bdg.ending  { background:#fff7ed; color:#ea580c; }
+.bdg.nr      { background:#f0fdf4; color:#166534; }
+.bdg.estate  { background:#ede9fe; color:#5b21b6; }
+.bdg.untested { background:#f1f5f9; color:#475569; }
+.card-title  { font-family:‘Lora’,serif; font-size:13.5px; color:#2c2416; line-height:1.45; margin-bottom:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.card-prices { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.card-price  { font-family:monospace; font-size:17px; font-weight:700; color:#1c1410; }
+.card-price.a { color:#b45309; }
+.card-sep    { font-size:11px; color:#c8bfb0; }
+.card-bids   { font-size:11px; color:#b8a898; }
+.card-time   { font-size:11px; margin-left:auto; color:#b8a898; }
+.card-time.r { color:#dc2626; font-weight:700; }
+.score-bar   { margin-top:8px; display:flex; align-items:center; gap:6px; }
+.score-track { flex:1; height:3px; background:#f0ebe0; border-radius:2px; overflow:hidden; }
+.score-fill  { height:100%; border-radius:2px; background:linear-gradient(90deg,#d97706,#fbbf24); }
+.score-lbl   { font-size:9px; color:#c8bfb0; white-space:nowrap; }
+.card-arrow  { color:#ddd8d0; font-size:16px; transition:all 0.18s; flex-shrink:0; }
 .card:hover .card-arrow { color:#d97706; transform:translateX(3px); }
-.mv-spinner { width:8px; height:8px; border:1.5px solid #e0d8cc; border-top-color:#d97706; border-radius:50%; display:inline-block; animation:spin 0.7s linear infinite; }
 
 .empty { padding:36px; text-align:center; background:#fff; border-radius:14px; border:1px solid #e8e2d8; }
 .empty-icon { font-size:30px; margin-bottom:10px; }
 .empty p { font-size:12px; color:#b8a898; }
-.empty small { font-size:10px; color:#c8bfb0; margin-top:4px; display:block; }
 
 .footer { margin-top:22px; text-align:center; }
-.cta { display:inline-block; padding:12px 30px; background:#d97706; border-radius:12px; color:#fff; font-size:11px; letter-spacing:1.5px; text-decoration:none; font-family:monospace; font-weight:500; transition:all 0.18s; box-shadow:0 4px 16px rgba(217,119,6,0.28); }
-.sort-select { padding:8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; font-size:10px; font-family:monospace; color:#b8a898; cursor:pointer; outline:none; transition:all 0.18s; appearance:none; -webkit-appearance:none; background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘10’ height=‘6’%3E%3Cpath d=‘M0 0l5 6 5-6z’ fill=’%23c8bfb0’/%3E%3C/svg%3E”); background-repeat:no-repeat; background-position:right 10px center; padding-right:26px; }
-.sort-select:focus { border-color:#d97706; color:#b45309; }
-.search-input { width:100%; padding:11px 40px 11px 16px; background:#fff; border:1px solid #ddd5c8; border-radius:12px; font-family:‘DM Mono’,monospace; font-size:13px; color:#2c2416; outline:none; transition:all 0.18s; box-shadow:0 1px 4px rgba(0,0,0,0.04); }
-.search-input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,0.1); }
-.search-input::placeholder { color:#c8bfb0; }
-.search-clear { position:absolute; right:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c8bfb0; font-size:16px; padding:0; display:none; }
-.search-clear.visible { display:block; }
-.search-go { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:#d97706; border:none; border-radius:8px; cursor:pointer; color:#fff; font-size:11px; padding:4px 10px; font-family:monospace; }
-
-.brands { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
-.brand-pill { padding:6px 12px; border-radius:20px; font-size:10px; font-family:monospace; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; white-space:nowrap; }
-.brand-pill.active { background:#1c1410; border-color:#1c1410; color:#fff; }
-.brand-pill:hover:not(.active) { border-color:#d97706; color:#b45309; }
-
+.cta { display:inline-block; padding:12px 30px; background:#d97706; border-radius:12px; color:#fff; font-size:11px; letter-spacing:1.5px; text-decoration:none; transition:all 0.18s; box-shadow:0 4px 16px rgba(217,119,6,0.28); }
 .cta:hover { background:#b45309; transform:translateY(-1px); }
 .footer-note { margin-top:10px; font-size:9px; color:#c8bfb0; }
 </style>
 
 </head>
 <body>
-<div class="container">
-
-  <!-- Header -->
+<div class="container" style="animation:fadeUp 0.5s ease">
 
   <div style="margin-bottom:24px">
     <div class="status-bar">
-      <span class="status-dot" id="statusDot"></span>
-      <span class="status-text" id="statusText">loading…</span>
+      <span class="dot" id="dot"></span>
+      <span class="status-text" id="statusTxt">loading…</span>
       <span class="status-time" id="statusTime"></span>
     </div>
     <h1>Vintage Watch<br><span>Deal Hunter</span></h1>
-    <p class="subtitle">UK-only auctions · live market values via web search</p>
+    <p style="margin-top:6px;font-size:11px;color:#b8a898">UK-only auctions · deal scoring · browser alerts</p>
   </div>
-
-  <!-- Banners -->
 
   <div id="apiBanner"></div>
   <div id="notifBanner"></div>
   <div id="alertLog"></div>
 
-  <!-- Custom search -->
-
   <div class="search-wrap">
-    <input class="search-input" id="searchInput" type="text" placeholder="Search e.g. Seiko 6138, Omega Constellation…" oninput="onSearchInput()" onkeydown="if(event.key==='Enter')doSearch()" style="padding-right:70px">
-    <button class="search-clear" id="searchClear" onclick="clearSearch()" style="right:48px">✕</button>
-    <button class="search-go" onclick="doSearch()">Search</button>
+    <input class="search-input" id="searchInput" type="text" placeholder="Search e.g. Seiko 6138, Omega Seamaster…" oninput="onSearchType()" onkeydown="if(event.key==='Enter')runSearch()">
+    <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
+    <button class="search-go" onclick="runSearch()">Search</button>
   </div>
-
-  <!-- Brand pills -->
 
   <div class="brands">
-    <button class="brand-pill active" onclick="setBrand('all')">All</button>
-    <button class="brand-pill" onclick="setBrand('seiko')">Seiko</button>
-    <button class="brand-pill" onclick="setBrand('citizen')">Citizen</button>
-    <button class="brand-pill" onclick="setBrand('orient')">Orient</button>
-    <button class="brand-pill" onclick="setBrand('omega')">Omega</button>
-    <button class="brand-pill" onclick="setBrand('longines')">Longines</button>
-    <button class="brand-pill" onclick="setBrand('tissot')">Tissot</button>
+    <button class="brand on" onclick="setBrand('all')">All</button>
+    <button class="brand"    onclick="setBrand('seiko')">Seiko</button>
+    <button class="brand"    onclick="setBrand('citizen')">Citizen</button>
+    <button class="brand"    onclick="setBrand('orient')">Orient</button>
+    <button class="brand"    onclick="setBrand('omega')">Omega</button>
+    <button class="brand"    onclick="setBrand('longines')">Longines</button>
+    <button class="brand"    onclick="setBrand('tissot')">Tissot</button>
   </div>
-
-  <!-- Tabs -->
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab(0)">◈ Seiko Vintage</button>
-    <button class="tab" onclick="switchTab(1)">◉ Japanese Vintage</button>
-    <button class="tab" onclick="switchTab(2)">◎ All Vintage</button>
+    <button class="tab on" onclick="setTab(0,this)">◈ Seiko Vintage</button>
+    <button class="tab"    onclick="setTab(1,this)">◉ Japanese</button>
+    <button class="tab"    onclick="setTab(2,this)">◎ All Vintage</button>
   </div>
 
-  <!-- Controls -->
-
   <div class="controls">
-    <button class="pill" id="snipeBtn" onclick="toggleSnipe()">⚡ Snipe mode OFF</button>
+    <button class="pill" id="snipeBtn" onclick="toggleSnipe()">⚡ Snipe OFF</button>
     <button class="pill" id="priceBtn" onclick="togglePrice()">£ Price cap</button>
-    <select class="sort-select" id="sortSelect" onchange="changeSort(this.value)">
+    <select class="sort-sel" id="sortSel" onchange="setSort(this.value)">
       <option value="score">Best deal</option>
       <option value="ending">Ending soonest</option>
-      <option value="price_asc">Price: low–high</option>
-      <option value="price_desc">Price: high–low</option>
-      <option value="newest">Newly listed</option>
+      <option value="price_asc">Price ↑</option>
+      <option value="price_desc">Price ↓</option>
     </select>
     <button class="refresh-btn" onclick="doFetch()">↻</button>
   </div>
 
-  <!-- Price slider -->
-
-  <div class="slider-wrap" id="sliderWrap" style="display:none">
-    <div class="slider-header">
-      <span class="slider-label">PRICE CEILING</span>
+  <div class="slider-box" id="sliderBox" style="display:none">
+    <div class="slider-hd">
+      <span class="slider-lbl">PRICE CEILING</span>
       <span class="slider-val" id="sliderVal">£150</span>
     </div>
-    <input type="range" id="priceSlider" min="5" max="500" step="5" value="150" oninput="updateSlider(this.value)" onchange="doFetch()">
+    <input type="range" id="priceRange" min="5" max="500" step="5" value="150" oninput="slidePrice(this.value)" onchange="doFetch()">
     <div class="slider-limits"><span>£5</span><span>£500</span></div>
   </div>
 
-  <!-- Countdown -->
-
-  <div class="countdown-wrap">
-    <div class="countdown-header">
-      <span class="countdown-label">AUTO-REFRESH</span>
-      <span class="countdown-time" id="countdownTime">5:00</span>
+  <div class="cdwn">
+    <div class="cdwn-hd">
+      <span class="cdwn-lbl">AUTO-REFRESH</span>
+      <span class="cdwn-t" id="cdwnTime">5:00</span>
     </div>
-    <div class="countdown-track"><div class="countdown-fill" id="countdownFill" style="width:100%"></div></div>
+    <div class="cdwn-track"><div class="cdwn-fill" id="cdwnFill" style="width:100%"></div></div>
   </div>
 
-  <!-- Stats -->
-
-  <div class="stats" id="stats" style="display:none">
-    <div class="stat"><div class="stat-val" id="statCount" style="color:#1c1410">0</div><div class="stat-lbl">AUCTIONS</div></div>
-    <div class="stat"><div class="stat-val" id="statHot" style="color:#d97706">0</div><div class="stat-lbl">HOT BUYS</div></div>
-    <div class="stat"><div class="stat-val" id="statLowest" style="color:#16a34a">—</div><div class="stat-lbl">LOWEST BID</div></div>
+  <div class="stats" id="statsBox" style="display:none">
+    <div class="stat"><div class="stat-v" id="sCount" style="color:#1c1410">0</div><div class="stat-l">AUCTIONS</div></div>
+    <div class="stat"><div class="stat-v" id="sHot"   style="color:#d97706">0</div><div class="stat-l">HOT BUYS</div></div>
+    <div class="stat"><div class="stat-v" id="sLow"   style="color:#16a34a">—</div><div class="stat-l">LOWEST BID</div></div>
   </div>
-
-  <!-- AI Summary -->
-
-  <div class="ai-box" id="aiBox" style="display:none">
-    <div class="ai-label">◈ EXPERT ANALYSIS</div>
-    <div id="aiContent"></div>
-  </div>
-
-  <!-- Listings -->
 
   <div class="listings" id="listings"></div>
 
-  <!-- Footer -->
-
   <div class="footer" id="footer" style="display:none">
-    <a class="cta" id="ctaLink" href="#" target="_blank">VIEW ALL ON EBAY.CO.UK →</a>
-    <p class="footer-note">Live eBay UK data · market values sourced via web search · click any card to view on eBay</p>
+    <a class="cta" id="ctaBtn" href="#" target="_blank">VIEW ALL ON EBAY.CO.UK →</a>
+    <p class="footer-note">Live eBay UK data · click any listing to view on eBay</p>
   </div>
 
 </div>
-
 <script>
-const PROXY_URL = "https://watch-hunter-proxy.vercel.app/api/ebay";
-const REFRESH_INTERVAL = 300;
-const SEARCHES = [
-  { label: "Seiko Vintage", query: "seiko vintage watch" },
-  { label: "Japanese Vintage", query: "japan vintage watch automatic" },
-  { label: "All Vintage", query: "vintage watch auction" },
+const PROXY       = "https://watch-hunter-proxy.vercel.app/api/ebay";
+const REFRESH_SEC = 300;
+const TABS = [
+  { query:"seiko vintage watch" },
+  { query:"japan vintage watch automatic" },
+  { query:"vintage watch auction" },
 ];
-const VALUE_SIGNALS = ["no reserve","nr","starting bid","0.99","1 bid","0 bids","estate","collection","lot","bundle","untested","as-is","job lot","spares"];
-const MARKET_VALUES_CACHE = {};
+const VALUE_SIGNALS  = ["no reserve","nr","starting","0.99","estate","collection","lot","bundle","untested","as-is","spares","repair"];
+const BRAND_SIGNALS  = ["seiko","citizen","orient","omega","longines","tissot","bulova","casio"];
+const LUXURY_SIGNALS = ["omega","longines","rolex","zenith","rado","tag heuer"];
 
-let activeTab = 0, snipeMode = false, priceEnabled = false, maxPrice = 150;
-let activeBrand = "all", customSearch = "", sortMode = "score";
-let countdown = REFRESH_INTERVAL, countdownTimer = null;
-let currentAuctions = [], currentMV = {};
-let seenHotBuys = new Set(), seenSnipeAlerts = new Set();
-let alertLog = [];
+// ── State ─────────────────────────────────────────────────────────────────
+let activeTab   = 0;
+let activeBrand = “all”;
+let customQuery = “”;
+let snipeOn     = false;
+let priceOn     = false;
+let maxPrice    = 150;
+let sortMode    = “score”;
+let cdwnSecs    = REFRESH_SEC;
+let cdwnTimer   = null;
+let auctions    = [];
+let rawResults  = [];
+let seenHot     = new Set();
+let seenSnipe   = new Set();
+let alerts      = [];
 
-// ── Scoring ──────────────────────────────────────────────────────────────
-function scoreWatch(title, price, bids, mv) {
-  let s = 0, l = title.toLowerCase();
-  VALUE_SIGNALS.forEach(sig => { if (l.includes(sig)) s += 2; });
-  if (bids < 3) s += 3;
-  if (price < 100) s += 2;
-  if (price < 50) s += 2;
-  if (mv) { if (price < mv*0.3) s += 4; else if (price < mv*0.5) s += 2; }
-  if (l.includes("seiko")||l.includes("citizen")||l.includes("orient")) s += 1;
-  if (l.includes("omega")||l.includes("longines")) s += 3;
-  return s;
+// ── Scoring ───────────────────────────────────────────────────────────────
+function scoreItem(a) {
+let s = 0;
+const l = (a.title || “”).toLowerCase();
+VALUE_SIGNALS.forEach(sig => { if (l.includes(sig)) s += 2; });
+if (a.bids < 2)   s += 4;
+if (a.bids < 5)   s += 2;
+if (a.price < 20)  s += 4;
+if (a.price < 50)  s += 2;
+if (a.price < 100) s += 1;
+BRAND_SIGNALS.forEach(b => { if (l.includes(b)) s += 1; });
+LUXURY_SIGNALS.forEach(b => { if (l.includes(b)) s += 3; });
+const mins = parseMins(a.timeLeft);
+if (mins < 60)  s += 2;
+if (mins < 180) s += 1;
+return Math.min(s, 20);
 }
 
 function parseMins(t) {
-  const h = t.match(/(\d+)h/), m = t.match(/(\d+)m/);
-  return (h?parseInt(h[1])*60:0) + (m?parseInt(m[1]):0);
+if (!t || t === “unknown”) return 9999;
+const h = t.match(/(\d+)h/), m = t.match(/(\d+)m/);
+return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
 }
 
-function extractModel(title) {
-  const l = title.toLowerCase();
-  const brand = ["seiko","citizen","orient","omega","longines","tissot","bulova"].find(b=>l.includes(b))||"";
-  const num = title.match(/\b([0-9]{4,6}|[A-Z]{2,4}[0-9]{3,5})\b/)?.[0]||"";
-  const names = ["lord marvel","pogue","monster","seamaster","ultra chron","homer","5 automatic","star","diver"];
-  const name = names.find(n=>l.includes(n))||"";
-  return [brand, num||name].filter(Boolean).join(" ").trim() || title.split(" ").slice(0,3).join(" ");
+function getQuery() {
+if (customQuery) return customQuery;
+if (activeBrand !== “all”) return `${activeBrand} vintage watch auction`;
+return TABS[activeTab].query;
 }
 
 // ── eBay fetch ────────────────────────────────────────────────────────────
-async function fetchListings(query, cap) {
-  const p = new URLSearchParams({ query });
-  if (cap) p.set("maxPrice", cap);
-  const res = await fetch(`${PROXY_URL}?${p}`);
-  if (!res.ok) throw new Error(`Proxy error ${res.status}`);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  const items = data.itemSummaries || [];
-  return items.map(item => {
-    const price = parseFloat(item.price?.value || item.currentBidPrice?.value || 0);
-    const bids = item.bidCount || 0;
-    let timeLeft = "unknown";
-    if (item.itemEndDate) {
-      const ms = new Date(item.itemEndDate) - Date.now();
-      if (ms > 0) { const tm=Math.floor(ms/60000); timeLeft=`${Math.floor(tm/60)}h ${tm%60}m`; } else timeLeft="ended";
-    }
-    return { id: item.itemId, title: item.title||"Unknown", price, bids, timeLeft, image: item.image?.imageUrl||null, url: item.itemWebUrl||`https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(query)}&LH_Auction=1&LH_PrefLoc=1` };
-  }).filter(a => a.timeLeft !== "ended" && a.price > 0);
+async function fetchListings() {
+const q = getQuery();
+const p = new URLSearchParams({ query: q });
+if (priceOn) p.set(“maxPrice”, maxPrice);
+const res  = await fetch(`${PROXY}?${p}`);
+if (!res.ok) throw new Error(`Proxy error ${res.status}`);
+const data = await res.json();
+if (data.error) throw new Error(data.error);
+const items = data.itemSummaries || [];
+return items.map(item => {
+const price = parseFloat(item.price?.value || item.currentBidPrice?.value || 0);
+const bids  = item.bidCount || 0;
+let timeLeft = “unknown”;
+if (item.itemEndDate) {
+const ms = new Date(item.itemEndDate) - Date.now();
+if (ms > 0) {
+const tm = Math.floor(ms / 60000);
+timeLeft = `${Math.floor(tm / 60)}h ${tm % 60}m`;
+} else { timeLeft = “ended”; }
 }
-
-// ── Market value via Claude ───────────────────────────────────────────────
-async function fetchMarketValue(title) {
-  const model = extractModel(title);
-  const key = model.toLowerCase();
-  if (MARKET_VALUES_CACHE[key]) return MARKET_VALUES_CACHE[key];
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:500,
-        tools:[{type:"web_search_20250305",name:"web_search"}],
-        system:`You are a vintage watch pricing expert. Search eBay UK completed listings for the watch model and return ONLY valid JSON: {"value":<number>,"source":"<brief>","confidence":"<low|medium|high>"}. No markdown.`,
-        messages:[{role:"user",content:`eBay UK market value in GBP for: ${model}`}]
-      })
-    });
-    const data = await res.json();
-    const text = (data?.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n");
-    const match = text.match(/\{[\s\S]*?"value"[\s\S]*?\}/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
-      const result = { value: Math.round(parsed.value), source: parsed.source||"eBay UK sold listings", confidence: parsed.confidence||"medium" };
-      MARKET_VALUES_CACHE[key] = result;
-      return result;
-    }
-  } catch(e) { console.warn("MV fetch failed", e); }
-  return null;
+return {
+id: item.itemId,
+title: item.title || “Unknown item”,
+price, bids, timeLeft,
+url: item.itemWebUrl || `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Auction=1&LH_PrefLoc=1`,
+};
+}).filter(a => a.timeLeft !== “ended” && a.price > 0);
 }
 
 // ── Notifications ─────────────────────────────────────────────────────────
-function initNotifications() {
-  const el = document.getElementById("notifBanner");
-  if (!("Notification" in window)) return;
-  if (Notification.permission === "granted") {
-    el.innerHTML = `<div class="banner notif-granted">🔔 Alerts active — HOT BUYs &amp; auctions ending within 1 hour</div>`;
-  } else if (Notification.permission === "default") {
-    el.innerHTML = `<div class="notif-banner"><span style="font-size:18px">🔔</span><div class="notif-text"><h4>Enable deal alerts</h4><p>Get notified for HOT BUYs and auctions ending soon</p></div><button onclick="requestNotif()">Enable</button></div>`;
-  } else {
-    el.innerHTML = `<div class="banner notif-denied">🔕 Notifications blocked — enable in browser settings</div>`;
-  }
+function initNotif() {
+const el = document.getElementById(“notifBanner”);
+if (!(“Notification” in window)) return;
+if (Notification.permission === “granted”) {
+el.innerHTML = `<div class="banner nok">🔔 Alerts active — HOT BUYs &amp; auctions ending within 1 hour</div>`;
+} else if (Notification.permission === “default”) {
+el.innerHTML = `<div class="notif-ask"><span style="font-size:18px">🔔</span><div><h4>Enable deal alerts</h4><p>Get notified for HOT BUYs and auctions ending soon</p></div><button onclick="askNotif()">Enable</button></div>`;
+} else {
+el.innerHTML = `<div class="banner nno">🔕 Notifications blocked — enable in browser settings</div>`;
 }
-
-function requestNotif() {
-  Notification.requestPermission().then(() => initNotifications());
 }
-
+function askNotif() { Notification.requestPermission().then(() => initNotif()); }
 function fireNotif(title, body, tag) {
-  if (Notification.permission !== "granted") return;
-  try { new Notification(title, { body, tag, icon:"https://www.ebay.co.uk/favicon.ico" }); } catch(e){}
+if (Notification.permission !== “granted”) return;
+try { new Notification(title, { body, tag }); } catch(e) {}
+}
+function checkNotif(list) {
+const now = new Date().toLocaleTimeString(“en-GB”, { hour:“2-digit”, minute:“2-digit” });
+list.forEach(a => {
+const sc   = scoreItem(a);
+const mins = parseMins(a.timeLeft);
+const short = a.title.split(” “).slice(0, 5).join(” “);
+if (sc >= 10 && !seenHot.has(a.id)) {
+seenHot.add(a.id);
+fireNotif(“🔥 HOT BUY!”, `${short} — £${a.price.toFixed(2)}, ${a.timeLeft} left`, `hot-${a.id}`);
+alerts.unshift({ type:“hot”, title:short, price:a.price, time:now });
+}
+if (mins <= 60 && mins > 0 && !seenSnipe.has(a.id)) {
+seenSnipe.add(a.id);
+fireNotif(“⚡ Ending soon!”, `${short} — £${a.price.toFixed(2)}, ${a.timeLeft} left`, `snipe-${a.id}`);
+alerts.unshift({ type:“snipe”, title:short, price:a.price, time:now });
+}
+});
+alerts = alerts.slice(0, 8);
+if (alerts.length) {
+document.getElementById(“alertLog”).innerHTML =
+`<div class="alert-log"><div class="alert-lbl">RECENT ALERTS</div>${ alerts.map(a => `<div class="alert-item ${a.type}">
+<span>${a.type===“hot”?“🔥”:“⚡”}</span>
+<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.title}</span>
+<span style="font-weight:700;margin-left:8px">£${a.price.toFixed(2)}</span>
+<span style="color:#c8bfb0;margin-left:8px">${a.time}</span>
+</div>`).join("") }</div>`;
+}
 }
 
-function checkNotifications(auctions, mvMap) {
-  const now = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-  auctions.forEach(a => {
-    const mv = mvMap[a.id]?.value||null;
-    const score = scoreWatch(a.title, a.price, a.bids, mv);
-    const mins = parseMins(a.timeLeft);
-    const short = a.title.split(" ").slice(0,5).join(" ");
-    if (score >= 7 && !seenHotBuys.has(a.id)) {
-      seenHotBuys.add(a.id);
-      fireNotif("🔥 HOT BUY spotted!", `${short}\n£${a.price.toFixed(2)} · ${a.timeLeft} left`, `hot-${a.id}`);
-      alertLog.unshift({ type:"hot", title:short, price:a.price, time:now });
-    }
-    if (mins <= 60 && mins > 0 && !seenSnipeAlerts.has(a.id)) {
-      seenSnipeAlerts.add(a.id);
-      fireNotif("⚡ Ending soon!", `${short}\n£${a.price.toFixed(2)} · ${a.timeLeft} left`, `snipe-${a.id}`);
-      alertLog.unshift({ type:"snipe", title:short, price:a.price, timeLeft:a.timeLeft, time:now });
-    }
-  });
-  alertLog = alertLog.slice(0, 8);
-  renderAlertLog();
+// ── Render ────────────────────────────────────────────────────────────────
+function keywordBadges(title) {
+const l = title.toLowerCase();
+const badges = [];
+if (l.includes(“no reserve”) || l.includes(” nr “) || l.match(/\bnr\b/)) badges.push(`<span class="bdg nr">No Reserve</span>`);
+if (l.includes(“estate”) || l.includes(“collection find”)) badges.push(`<span class="bdg estate">Estate find</span>`);
+if (l.includes(“untested”) || l.includes(“spares”) || l.includes(“repair”) || l.includes(“as-is”)) badges.push(`<span class="bdg untested">Untested</span>`);
+return badges.join(””);
 }
 
-function renderAlertLog() {
-  if (!alertLog.length) return;
-  const el = document.getElementById("alertLog");
-  el.innerHTML = `<div class="alert-log"><div class="alert-log-label">RECENT ALERTS</div>${
-    alertLog.map(a=>`<div class="alert-item ${a.type}"><span>${a.type==="hot"?"🔥":"⚡"}</span><span class="alert-title">${a.title}</span><span class="alert-price">£${a.price.toFixed(2)}</span><span class="alert-time">${a.time}</span></div>`).join("")
-  }</div>`;
+function timeBadge(t) {
+const m = parseMins(t);
+if (m > 120) return “”;
+return m < 60
+? `<span class="bdg snipe">⚡ SNIPE NOW</span>`
+: `<span class="bdg ending">⏰ ENDING SOON</span>`;
 }
 
-// ── Render helpers ────────────────────────────────────────────────────────
-function dealBadge(price, mv) {
-  if (!mv) return "";
-  const pct = Math.round((price/mv)*100), saving = mv-price;
-  if (pct > 80 || saving < 5) return "";
-  if (pct < 30) return `<span class="badge steal">🔥 Steal · save ~£${saving.toFixed(0)}</span>`;
-  if (pct < 50) return `<span class="badge great">✓ Great deal · save ~£${saving.toFixed(0)}</span>`;
-  return `<span class="badge good">↓ Good value · save ~£${saving.toFixed(0)}</span>`;
+function cardHTML(a, rank) {
+const sc     = scoreItem(a);
+const isHot  = sc >= 10;
+const mins   = parseMins(a.timeLeft);
+const urgent = mins < 60 && mins > 0;
+const cls    = [“card”, isHot ? “hc” : “”, urgent ? “uc” : “”].filter(Boolean).join(” “);
+const scorePct = Math.min((sc / 20) * 100, 100);
+
+return `<a class="${cls}" href="${a.url}" target="_blank" style="animation-delay:${rank * 0.06}s"> <div class="card-inner"> <div class="card-rank">#${rank}</div> <div class="card-body"> <div class="card-badges"> ${isHot ? '<span class="bdg hot">🔥 HOT BUY</span>' : ""} ${timeBadge(a.timeLeft)} ${keywordBadges(a.title)} </div> <div class="card-title">${a.title}</div> <div class="card-prices"> <span class="card-price ${isHot ? "a" : ""}">£${a.price.toFixed(2)}</span> <span class="card-sep">·</span> <span class="card-bids">${a.bids === 0 ? "no bids" : `${a.bids} bid${a.bids !== 1 ? “s” : “”}`}</span> <span class="card-time ${urgent ? "r" : ""}">⏱ ${a.timeLeft}</span> </div> <div class="score-bar"> <div class="score-track"><div class="score-fill" style="width:${scorePct}%"></div></div> <span class="score-lbl">Deal score ${sc}/20</span> </div> </div> <div class="card-arrow">→</div> </div> </a>`;
 }
 
-function snipeBadge(timeLeft) {
-  const m = parseMins(timeLeft);
-  if (m > 120) return "";
-  return m < 60 ? `<span class="badge snipe-now">⚡ SNIPE NOW</span>` : `<span class="badge ending-soon">⏰ ENDING SOON</span>`;
+function render() {
+const el = document.getElementById(“listings”);
+if (!auctions.length) {
+el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><p>No auctions found — try changing filters</p></div>`;
+document.getElementById(“statsBox”).style.display = “none”;
+document.getElementById(“footer”).style.display   = “none”;
+return;
+}
+el.innerHTML = auctions.map((a, i) => cardHTML(a, i + 1)).join(””);
+const hotCount = auctions.filter(a => scoreItem(a) >= 10).length;
+document.getElementById(“sCount”).textContent = auctions.length;
+document.getElementById(“sHot”).textContent   = hotCount;
+document.getElementById(“sLow”).textContent   = `£${Math.min(...auctions.map(a => a.price)).toFixed(2)}`;
+document.getElementById(“statsBox”).style.display = “flex”;
+document.getElementById(“footer”).style.display   = “block”;
+document.getElementById(“ctaBtn”).href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(getQuery())}&LH_Auction=1&LH_PrefLoc=1${priceOn ? `&_udhi=${maxPrice}` : ""}`;
 }
 
-function confidencePip(c) {
-  const colors = {high:"#16a34a",medium:"#d97706",low:"#dc2626"};
-  const labels = {high:"✓ verified",medium:"~ estimated",low:"? uncertain"};
-  return `<span style="font-size:9px;color:${colors[c]||colors.medium};opacity:0.8">${labels[c]||labels.medium}</span>`;
-}
-
-function renderCard(a, rank, mv, mvLoading) {
-  const score = scoreWatch(a.title, a.price, a.bids, mv?.value||null);
-  const isHot = score >= 7;
-  const mins = parseMins(a.timeLeft);
-  const isUrgent = mins < 60 && mins > 0;
-  const classes = ["card", isHot?"hot":"", isUrgent&&snipeMode?"urgent":""].filter(Boolean).join(" ");
-
-  const mvHtml = mvLoading
-    ? `<span class="card-mktval"><span class="mv-spinner"></span><span style="color:#c8bfb0">fetching mkt val…</span></span>`
-    : mv
-    ? `<span class="card-mktval">est. mkt £${mv.value} ${confidencePip(mv.confidence)}</span>`
-    : `<span style="font-size:11px;color:#c8bfb0;font-family:monospace">mkt val unavailable</span>`;
-
-  const sourceHtml = mv?.source ? `<div class="card-source">📊 ${mv.source}</div>` : "";
-
-  return `<a class="${classes}" href="${a.url}" target="_blank" style="animation-delay:${rank*0.06}s">
-    <div class="card-inner">
-      <div class="card-rank">#${rank}</div>
-      <div class="card-body">
-        <div class="card-badges">
-          ${isHot?'<span class="badge hot-buy">HOT BUY</span>':""}
-          ${snipeBadge(a.timeLeft)}
-          ${dealBadge(a.price, mv?.value||null)}
-        </div>
-        <div class="card-title">${a.title}</div>
-        <div class="card-prices">
-          <span class="card-price ${isHot?"hot":""}">£${a.price.toFixed(2)}</span>
-          ${mvHtml}
-          <span class="card-sep">·</span>
-          <span class="card-bids">${a.bids===0?"no bids":`${a.bids} bid${a.bids!==1?"s":""}`}</span>
-          <span class="card-time ${isUrgent?"urgent":""}">⏱ ${a.timeLeft}</span>
-        </div>
-        ${sourceHtml}
-      </div>
-      <div class="card-arrow">→</div>
-    </div>
-  </a>`;
-}
-
-function renderListings() {
-  const el = document.getElementById("listings");
-  if (!currentAuctions.length) {
-    el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><p>No auctions match your filters</p><small>Try raising the price ceiling or turning off snipe mode</small></div>`;
-    return;
-  }
-  el.innerHTML = currentAuctions.map((a,i) => renderCard(a, i+1, currentMV[a.id]===undefined?null:currentMV[a.id], currentMV[a.id]===undefined)).join("");
-
-  // Update stats
-  const hotCount = currentAuctions.filter(a=>scoreWatch(a.title,a.price,a.bids,currentMV[a.id]?.value||null)>=7).length;
-  document.getElementById("statCount").textContent = currentAuctions.length;
-  document.getElementById("statHot").textContent = hotCount;
-  document.getElementById("statLowest").textContent = `£${Math.min(...currentAuctions.map(a=>a.price)).toFixed(2)}`;
-  document.getElementById("stats").style.display = "flex";
-  document.getElementById("footer").style.display = "block";
-  document.getElementById("ctaLink").href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(baseQuery)}&LH_Auction=1&LH_PrefLoc=1${priceEnabled?`&_udhi=${maxPrice}`:""}`;
+function applyFiltersAndSort(list) {
+let r = […list];
+if (snipeOn) r = r.filter(a => parseMins(a.timeLeft) <= 120);
+if (sortMode === “ending” || snipeOn) r.sort((a, b) => parseMins(a.timeLeft) - parseMins(b.timeLeft));
+else if (sortMode === “price_asc”)  r.sort((a, b) => a.price - b.price);
+else if (sortMode === “price_desc”) r.sort((a, b) => b.price - a.price);
+else r.sort((a, b) => scoreItem(b) - scoreItem(a));
+return r.slice(0, 10);
 }
 
 // ── Main fetch ────────────────────────────────────────────────────────────
 async function doFetch(silent = false) {
-  if (!silent) {
-    document.getElementById("listings").innerHTML = [1,2,3,4].map((_,i)=>`<div class="skeleton" style="opacity:${0.65-i*0.1};animation:shimmerIn 0.3s ease ${i*0.07}s both"></div>`).join("");
-    document.getElementById("stats").style.display = "none";
-    document.getElementById("aiBox").style.display = "none";
-    document.getElementById("footer").style.display = "none";
-    document.getElementById("apiBanner").innerHTML = "";
-    currentMV = {};
-    currentAuctions = [];
-  }
-
-  const dot = document.getElementById("statusDot");
-  const txt = document.getElementById("statusText");
-  dot.className = "status-dot loading";
-  txt.textContent = "fetching auctions…";
-
-  const baseQuery = customSearch
-    ? customSearch
-    : activeBrand !== "all"
-    ? `${activeBrand} vintage watch`
-    : SEARCHES[activeTab].query;
-  let results = [], usedFallback = false;
-
-  try {
-    results = await fetchListings(baseQuery, priceEnabled ? maxPrice : null);
-    if (!results.length) throw new Error("No auction results for this search");
-    document.getElementById("apiBanner").innerHTML = `<div class="banner live">✓ Live eBay UK data · Production</div>`;
-    dot.className = "status-dot live";
-    txt.textContent = "ebay uk · live";
-  } catch(err) {
-    usedFallback = true;
-    document.getElementById("apiBanner").innerHTML = `<div class="banner fallback">⚠ ${err.message}</div>`;
-    dot.className = "status-dot fallback";
-    txt.textContent = "ebay.co.uk · demo data";
-  }
-
-  document.getElementById("statusTime").textContent = new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
-
-  if (snipeMode) results = results.filter(a => parseMins(a.timeLeft) <= 120);
-  results = results
-    .map(a => ({...a, score: scoreWatch(a.title,a.price,a.bids,null)}))
-    .sort((a,b) => {
-      if (sortMode === "ending" || snipeMode) return parseMins(a.timeLeft) - parseMins(b.timeLeft);
-      if (sortMode === "price_asc") return a.price - b.price;
-      if (sortMode === "price_desc") return b.price - a.price;
-      if (sortMode === "newest") return 0; // already sorted by newlyListed from API
-      return b.score - a.score; // default: best deal
-    })
-    .slice(0, 7);
-
-  currentAuctions = results;
-  // Mark all MV as loading
-  results.forEach(a => { currentMV[a.id] = undefined; });
-  renderListings();
-
-  // Fetch market values in parallel, update cards as they come in
-  const mvPromises = results.map(async a => {
-    const mv = await fetchMarketValue(a.title);
-    currentMV[a.id] = mv || null;
-    renderListings();
-    return { id: a.id, mv };
-  });
-
-  const resolved = await Promise.all(mvPromises);
-  const mvMap = {};
-  resolved.forEach(({id, mv}) => { mvMap[id] = mv; });
-  checkNotifications(results, mvMap);
-  fetchAiSummary(results, mvMap);
+if (!silent) {
+document.getElementById(“listings”).innerHTML = [0,1,2,3].map(i =>
+`<div class="skel" style="opacity:${0.65-i*0.1};animation:shimIn 0.3s ease ${i*0.07}s both"></div>`
+).join(””);
+document.getElementById(“statsBox”).style.display = “none”;
+document.getElementById(“footer”).style.display   = “none”;
+document.getElementById(“apiBanner”).innerHTML    = “”;
+auctions = []; rawResults = [];
 }
 
-async function fetchAiSummary(results, mvMap) {
-  if (!results.length) return;
-  const aiBox = document.getElementById("aiBox");
-  const aiContent = document.getElementById("aiContent");
-  aiBox.style.display = "block";
-  aiContent.innerHTML = `<div class="ai-loading"><div class="ai-spinner"></div><span class="ai-loading-text">Analysing with live market data…</span></div>`;
+const dot = document.getElementById(“dot”);
+const txt = document.getElementById(“statusTxt”);
+dot.className = “dot loading”;
+txt.textContent = “fetching auctions…”;
 
-  try {
-    const listText = results.slice(0,5).map((a,i) => {
-      const mv = mvMap[a.id];
-      return `${i+1}. "${a.title}" — £${a.price.toFixed(2)}, ${mv?`est. market £${mv.value} (${mv.confidence})`:"market value unknown"}, ${a.bids} bids, ${a.timeLeft} left`;
-    }).join("\n");
+try {
+rawResults = await fetchListings();
+if (!rawResults.length) throw new Error(“No results for this search”);
+document.getElementById(“apiBanner”).innerHTML = `<div class="banner live">✓ Live eBay UK · Production</div>`;
+dot.className   = “dot live”;
+txt.textContent = “ebay uk · live”;
+} catch(e) {
+document.getElementById(“apiBanner”).innerHTML = `<div class="banner warn">⚠ ${e.message}</div>`;
+dot.className   = “dot warn”;
+txt.textContent = “no results”;
+rawResults = [];
+}
 
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-20250514", max_tokens:1000,
-        system:"You are a vintage watch expert and deal hunter specialising in the UK eBay marketplace. Give a sharp, opinionated 2–3 sentence take on which listings look like the best buys, referencing the live market values. Use collector lingo naturally. No bullet points.",
-        messages:[{role:"user",content:`Analyse these UK eBay auction listings:\n\n${listText}`}]
-      })
-    });
-    const data = await res.json();
-    const text = data?.content?.[0]?.text || "";
-    aiContent.innerHTML = `<p class="ai-text">${text}</p>`;
-  } catch {
-    aiContent.innerHTML = `<p class="ai-text" style="color:#c8bfb0">Couldn't load analysis.</p>`;
-  }
+document.getElementById(“statusTime”).textContent =
+new Date().toLocaleTimeString(“en-GB”, { hour:“2-digit”, minute:“2-digit” });
+
+auctions = applyFiltersAndSort(rawResults);
+render();
+checkNotif(auctions);
 }
 
 // ── Countdown ─────────────────────────────────────────────────────────────
 function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  countdown = REFRESH_INTERVAL;
-  countdownTimer = setInterval(() => {
-    countdown--;
-    const pct = (countdown / REFRESH_INTERVAL) * 100;
-    const m = Math.floor(countdown/60), s = countdown%60;
-    document.getElementById("countdownTime").textContent = `${m}:${s.toString().padStart(2,"0")}`;
-    document.getElementById("countdownFill").style.width = `${pct}%`;
-    if (countdown <= 0) {
-      countdown = REFRESH_INTERVAL;
-      doFetch(true);
-    }
-  }, 1000);
-}
-
-function changeSort(val) {
-  sortMode = val;
-  doFetch();
-}
-
-function setBrand(brand) {
-  activeBrand = brand;
-  customSearch = "";
-  document.getElementById("searchInput").value = "";
-  document.getElementById("searchClear").className = "search-clear";
-  document.querySelectorAll(".brand-pill").forEach(el => {
-    el.className = "brand-pill" + (el.textContent.toLowerCase() === brand || (brand==="all" && el.textContent==="All") ? " active" : "");
-  });
-  startCountdown();
-  doFetch();
-}
-
-function onSearchInput() {
-  const val = document.getElementById("searchInput").value;
-  document.getElementById("searchClear").className = "search-clear" + (val ? " visible" : "");
-}
-
-function doSearch() {
-  const val = document.getElementById("searchInput").value.trim();
-  if (!val) return;
-  customSearch = val;
-  activeBrand = "all";
-  document.querySelectorAll(".brand-pill").forEach(el => el.className = "brand-pill" + (el.textContent==="All"?" active":""));
-  startCountdown();
-  doFetch();
-}
-
-function clearSearch() {
-  customSearch = "";
-  document.getElementById("searchInput").value = "";
-  document.getElementById("searchClear").className = "search-clear";
-  doFetch();
+if (cdwnTimer) clearInterval(cdwnTimer);
+cdwnSecs = REFRESH_SEC;
+cdwnTimer = setInterval(() => {
+cdwnSecs–;
+const pct = (cdwnSecs / REFRESH_SEC) * 100;
+const m = Math.floor(cdwnSecs / 60), s = cdwnSecs % 60;
+document.getElementById(“cdwnTime”).textContent = `${m}:${s.toString().padStart(2, "0")}`;
+document.getElementById(“cdwnFill”).style.width = `${pct}%`;
+if (cdwnSecs <= 0) { cdwnSecs = REFRESH_SEC; doFetch(true); }
+}, 1000);
 }
 
 // ── Controls ──────────────────────────────────────────────────────────────
-function switchTab(i) {
-  activeTab = i;
-  document.querySelectorAll(".tab").forEach((t,j) => t.className = "tab" + (j===i?" active":""));
-  startCountdown();
-  doFetch();
+function setTab(i, btn) {
+activeTab = i; customQuery = “”; activeBrand = “all”;
+document.getElementById(“searchInput”).value = “”;
+document.getElementById(“searchClear”).className = “search-clear”;
+document.querySelectorAll(”.tab”).forEach((t, j) => t.className = “tab” + (j === i ? “ on” : “”));
+document.querySelectorAll(”.brand”).forEach(b => b.className = “brand” + (b.textContent === “All” ? “ on” : “”));
+startCountdown(); doFetch();
+}
+
+function setBrand(brand) {
+activeBrand = brand; customQuery = “”;
+document.getElementById(“searchInput”).value = “”;
+document.getElementById(“searchClear”).className = “search-clear”;
+document.querySelectorAll(”.brand”).forEach(b => {
+const match = brand === “all” ? b.textContent === “All” : b.textContent.toLowerCase() === brand;
+b.className = “brand” + (match ? “ on” : “”);
+});
+startCountdown(); doFetch();
+}
+
+function onSearchType() {
+const v = document.getElementById(“searchInput”).value;
+document.getElementById(“searchClear”).className = “search-clear” + (v ? “ show” : “”);
+}
+
+function runSearch() {
+const v = document.getElementById(“searchInput”).value.trim();
+if (!v) return;
+customQuery = v; activeBrand = “all”;
+document.querySelectorAll(”.brand”).forEach(b => b.className = “brand” + (b.textContent === “All” ? “ on” : “”));
+startCountdown(); doFetch();
+}
+
+function clearSearch() {
+customQuery = “”;
+document.getElementById(“searchInput”).value = “”;
+document.getElementById(“searchClear”).className = “search-clear”;
+doFetch();
 }
 
 function toggleSnipe() {
-  snipeMode = !snipeMode;
-  const btn = document.getElementById("snipeBtn");
-  btn.className = "pill" + (snipeMode?" active":"");
-  btn.textContent = `⚡ Snipe mode ${snipeMode?"ON":"OFF"}`;
-  doFetch();
+snipeOn = !snipeOn;
+const btn = document.getElementById(“snipeBtn”);
+btn.className   = “pill” + (snipeOn ? “ on” : “”);
+btn.textContent = `⚡ Snipe ${snipeOn ? "ON" : "OFF"}`;
+auctions = applyFiltersAndSort(rawResults);
+render();
 }
 
 function togglePrice() {
-  priceEnabled = !priceEnabled;
-  const btn = document.getElementById("priceBtn");
-  btn.className = "pill" + (priceEnabled?" price-active":"");
-  btn.textContent = priceEnabled ? `£ ≤ £${maxPrice}` : "£ Price cap";
-  document.getElementById("sliderWrap").style.display = priceEnabled ? "block" : "none";
-  doFetch();
+priceOn = !priceOn;
+const btn = document.getElementById(“priceBtn”);
+btn.className   = “pill” + (priceOn ? “ on” : “”);
+btn.textContent = priceOn ? `£ ≤ £${maxPrice}` : “£ Price cap”;
+document.getElementById(“sliderBox”).style.display = priceOn ? “block” : “none”;
+doFetch();
 }
 
-function updateSlider(v) {
-  maxPrice = parseInt(v);
-  document.getElementById("sliderVal").textContent = `£${maxPrice}`;
-  document.getElementById("priceBtn").textContent = `£ ≤ £${maxPrice}`;
-  // Update slider gradient
-  const pct = ((maxPrice-5)/495)*100;
-  document.getElementById("priceSlider").style.background = `linear-gradient(90deg,#d97706 ${pct}%,#e8e2d8 ${pct}%)`;
+function slidePrice(v) {
+maxPrice = parseInt(v);
+document.getElementById(“sliderVal”).textContent = `£${maxPrice}`;
+document.getElementById(“priceBtn”).textContent  = `£ ≤ £${maxPrice}`;
+const pct = ((maxPrice - 5) / 495) * 100;
+document.getElementById(“priceRange”).style.background =
+`linear-gradient(90deg,#d97706 ${pct}%,#e8e2d8 ${pct}%)`;
+}
+
+function setSort(val) {
+sortMode = val;
+auctions = applyFiltersAndSort(rawResults);
+render();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-initNotifications();
+initNotif();
 startCountdown();
 doFetch();
 </script>
