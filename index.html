@@ -9,15 +9,15 @@
 <style>
 * { box-sizing:border-box; margin:0; padding:0; }
 body { background:linear-gradient(150deg,#f5f0e6 0%,#ede8db 100%); min-height:100vh; font-family:'DM Mono',monospace; padding:32px 16px; }
-.container { max-width:560px; margin:0 auto; }
+.container { max-width:580px; margin:0 auto; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-@keyframes spin { to{transform:rotate(360deg)} }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
 @keyframes shimIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
 
 h1 { font-family:‘Lora’,serif; font-size:32px; font-weight:700; color:#1c1410; line-height:1.08; letter-spacing:-0.5px; }
 h1 span { color:#d97706; }
 
+/* Status */
 .status-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .dot { width:7px; height:7px; border-radius:50%; display:inline-block; transition:all 0.3s; background:#ccc; }
 .dot.loading { background:#d97706; box-shadow:0 0 0 3px #fef3c7; }
@@ -26,16 +26,18 @@ h1 span { color:#d97706; }
 .status-text { font-size:10px; color:#b8a898; letter-spacing:2px; text-transform:uppercase; }
 .status-time { font-size:9px; color:#c8bfb0; margin-left:auto; }
 
+/* Banners */
 .banner { margin-bottom:12px; padding:8px 14px; border-radius:10px; font-size:10px; }
 .banner.live { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
 .banner.warn { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.banner.nok  { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
+.banner.nno  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
 .notif-ask { background:#fff; border:1px solid #e8e2d8; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:10px; margin-bottom:12px; }
 .notif-ask h4 { font-family:‘Lora’,serif; font-size:11px; color:#2c2416; font-weight:600; }
 .notif-ask p  { font-size:10px; color:#b8a898; margin-top:2px; }
 .notif-ask button { padding:6px 14px; background:#d97706; color:#fff; border:none; border-radius:8px; font-size:10px; cursor:pointer; white-space:nowrap; }
-.banner.nok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; }
-.banner.nno { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
 
+/* Search */
 .search-wrap  { position:relative; margin-bottom:12px; }
 .search-input { width:100%; padding:11px 90px 11px 16px; background:#fff; border:1px solid #ddd5c8; border-radius:12px; font-family:‘DM Mono’,monospace; font-size:13px; color:#2c2416; outline:none; transition:all 0.18s; }
 .search-input:focus { border-color:#d97706; box-shadow:0 0 0 3px rgba(217,119,6,0.1); }
@@ -44,30 +46,42 @@ h1 span { color:#d97706; }
 .search-clear { position:absolute; right:72px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#c8bfb0; font-size:14px; display:none; }
 .search-clear.show { display:block; }
 
-.brands { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
-.brand { padding:6px 12px; border-radius:20px; font-size:10px; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; }
+/* Brands */
+.section-lbl { font-size:9px; color:#b8a898; letter-spacing:2px; text-transform:uppercase; margin-bottom:6px; }
+.brands { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:12px; }
+.brand { padding:5px 10px; border-radius:20px; font-size:10px; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; white-space:nowrap; }
 .brand.on { background:#1c1410; border-color:#1c1410; color:#fff; }
 .brand:hover:not(.on) { border-color:#d97706; color:#b45309; }
 
+/* Tabs */
 .tabs { display:flex; gap:6px; margin-bottom:12px; }
 .tab { flex:1; padding:9px 4px; border-radius:10px; font-size:10px; cursor:pointer; transition:all 0.18s; border:1px solid #ddd5c8; background:transparent; color:#b8a898; }
 .tab.on { background:#fff; border:1.5px solid #d97706; color:#b45309; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
 
-.controls { display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
-.pill { padding:8px 14px; border-radius:20px; cursor:pointer; font-size:10px; transition:all 0.18s; border:1px solid #ddd5c8; background:#fff; color:#b8a898; }
+/* Controls */
+.controls { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; align-items:center; }
+.pill { padding:7px 12px; border-radius:20px; cursor:pointer; font-size:10px; transition:all 0.18s; border:1px solid #ddd5c8; background:#fff; color:#b8a898; white-space:nowrap; }
 .pill.on { background:#fffbeb; border-color:#f59e0b; color:#b45309; }
-.sort-sel { padding:8px 28px 8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; font-size:10px; color:#b8a898; cursor:pointer; outline:none; -webkit-appearance:none; appearance:none; background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘10’ height=‘6’%3E%3Cpath d=‘M0 0l5 6 5-6z’ fill=’%23c8bfb0’/%3E%3C/svg%3E”); background-repeat:no-repeat; background-position:right 10px center; }
-.refresh-btn { margin-left:auto; padding:8px 12px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; cursor:pointer; color:#b8a898; font-size:14px; transition:all 0.18s; }
+.pill.watchlist-on { background:#fef2f2; border-color:#fca5a5; color:#dc2626; }
+.sort-sel { padding:7px 26px 7px 10px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; font-size:10px; color:#b8a898; cursor:pointer; outline:none; -webkit-appearance:none; appearance:none; background-image:url(“data:image/svg+xml,%3Csvg xmlns=‘http://www.w3.org/2000/svg’ width=‘10’ height=‘6’%3E%3Cpath d=‘M0 0l5 6 5-6z’ fill=’%23c8bfb0’/%3E%3C/svg%3E”); background-repeat:no-repeat; background-position:right 8px center; }
+.refresh-btn { margin-left:auto; padding:7px 11px; background:#fff; border:1px solid #ddd5c8; border-radius:20px; cursor:pointer; color:#b8a898; font-size:14px; transition:all 0.18s; }
 .refresh-btn:hover { color:#d97706; border-color:#d97706; }
 
+/* Condition filter */
+.condition-row { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:12px; }
+.cond { padding:5px 10px; border-radius:20px; font-size:10px; cursor:pointer; border:1px solid #ddd5c8; background:#fff; color:#b8a898; transition:all 0.18s; white-space:nowrap; }
+.cond.on { background:#fffbeb; border-color:#d97706; color:#b45309; }
+
+/* Slider */
 .slider-box { margin-bottom:12px; padding:14px 16px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; }
 .slider-hd  { display:flex; justify-content:space-between; margin-bottom:10px; }
 .slider-lbl { font-size:10px; color:#b8a898; letter-spacing:1px; }
 .slider-val { font-family:‘Lora’,serif; font-size:14px; font-weight:700; color:#d97706; }
-input[type=range] { -webkit-appearance:none; width:100%; height:4px; outline:none; cursor:pointer; border-radius:2px; }
+input[type=range] { -webkit-appearance:none; width:100%; height:4px; outline:none; cursor:pointer; border-radius:2px; background:linear-gradient(90deg,#d97706 30%,#e8e2d8 30%); }
 input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#d97706; cursor:pointer; box-shadow:0 1px 6px rgba(217,119,6,0.35); }
 .slider-limits { display:flex; justify-content:space-between; margin-top:5px; font-size:9px; color:#c8bfb0; }
 
+/* Countdown */
 .cdwn { margin-bottom:14px; }
 .cdwn-hd    { display:flex; justify-content:space-between; margin-bottom:5px; }
 .cdwn-lbl   { font-size:10px; color:#b8a898; letter-spacing:1px; }
@@ -75,49 +89,79 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
 .cdwn-track { height:3px; background:#ede8de; border-radius:2px; overflow:hidden; }
 .cdwn-fill  { height:100%; background:linear-gradient(90deg,#d97706,#fbbf24); border-radius:2px; transition:width 1s linear; }
 
-.stats    { display:flex; margin-bottom:12px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; overflow:hidden; }
-.stat     { flex:1; padding:12px 8px; text-align:center; border-right:1px solid #f0ebe0; }
+/* Stats */
+.stats { display:flex; margin-bottom:12px; background:#fff; border-radius:12px; border:1px solid #e8e2d8; overflow:hidden; }
+.stat { flex:1; padding:12px 8px; text-align:center; border-right:1px solid #f0ebe0; }
 .stat:last-child { border-right:none; }
-.stat-v   { font-family:‘Lora’,serif; font-size:19px; font-weight:700; }
-.stat-l   { font-size:9px; color:#c8bfb0; letter-spacing:1px; margin-top:2px; }
+.stat-v { font-family:‘Lora’,serif; font-size:19px; font-weight:700; }
+.stat-l { font-size:9px; color:#c8bfb0; letter-spacing:1px; margin-top:2px; }
 
+/* Alerts */
 .alert-log  { margin-bottom:12px; }
 .alert-lbl  { font-size:9px; color:#b8a898; letter-spacing:2px; margin-bottom:6px; }
 .alert-item { padding:8px 12px; border-radius:8px; font-size:10px; display:flex; align-items:center; gap:8px; margin-bottom:5px; }
 .alert-item.hot   { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
 .alert-item.snipe { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
 
-.listings { display:flex; flex-direction:column; gap:8px; }
-.skel { height:85px; background:#fff; border-radius:14px; border:1px solid #e8e2d8; margin-bottom:8px; }
-.card { display:block; text-decoration:none; background:#fff; border:1px solid #e8e2d8; border-radius:14px; padding:14px 16px; transition:all 0.18s; animation:shimIn 0.25s ease both; }
+/* Cards */
+.listings { display:flex; flex-direction:column; gap:10px; }
+.skel { height:100px; background:#fff; border-radius:14px; border:1px solid #e8e2d8; margin-bottom:8px; }
+.card { display:block; text-decoration:none; background:#fff; border:1px solid #e8e2d8; border-radius:14px; overflow:hidden; transition:all 0.18s; animation:shimIn 0.25s ease both; position:relative; }
 .card:hover { background:#f8f4ee; transform:translateY(-2px); box-shadow:0 6px 24px rgba(0,0,0,0.07); }
 .card.hc { border:1.5px solid #d97706; box-shadow:0 2px 10px rgba(217,119,6,0.1); }
 .card.uc { background:#fffbeb; border:1.5px solid #f59e0b; }
-.card-inner  { display:flex; align-items:flex-start; gap:12px; }
-.card-rank   { font-size:11px; color:#c8bfb0; min-width:20px; padding-top:2px; }
-.card-body   { flex:1; min-width:0; }
-.card-badges { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:6px; min-height:18px; }
-.bdg         { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; }
+.card.wl { border:1.5px solid #fca5a5; }
+.card-inner { display:flex; align-items:stretch; gap:0; }
+.card-img { width:90px; min-height:90px; flex-shrink:0; overflow:hidden; background:#f5f0e6; }
+.card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.card-img-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:28px; background:linear-gradient(135deg,#f5f0e6,#ede8db); }
+.card-content { flex:1; min-width:0; padding:12px 14px; }
+.card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:4px; }
+.card-badges { display:flex; gap:4px; flex-wrap:wrap; flex:1; }
+.bdg { font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; white-space:nowrap; }
 .bdg.hot     { background:#92400e; color:#fef3c7; letter-spacing:1px; }
 .bdg.snipe   { background:#fef2f2; color:#dc2626; animation:pulse 1s infinite; }
 .bdg.ending  { background:#fff7ed; color:#ea580c; }
 .bdg.nr      { background:#f0fdf4; color:#166534; }
 .bdg.estate  { background:#ede9fe; color:#5b21b6; }
 .bdg.untested { background:#f1f5f9; color:#475569; }
-.card-title  { font-family:‘Lora’,serif; font-size:13.5px; color:#2c2416; line-height:1.45; margin-bottom:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.bdg.cond-w  { background:#d1fae5; color:#065f46; }
+.bdg.cond-s  { background:#fef3c7; color:#92400e; }
+.bdg.cond-u  { background:#f1f5f9; color:#475569; }
+.watchlist-btn { background:none; border:none; cursor:pointer; font-size:16px; padding:0; line-height:1; flex-shrink:0; opacity:0.4; transition:all 0.15s; }
+.watchlist-btn:hover { opacity:1; transform:scale(1.2); }
+.watchlist-btn.saved { opacity:1; }
+.card-title { font-family:‘Lora’,serif; font-size:13px; color:#2c2416; line-height:1.4; margin-bottom:8px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
 .card-prices { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-.card-price  { font-family:monospace; font-size:17px; font-weight:700; color:#1c1410; }
+.card-price { font-family:monospace; font-size:16px; font-weight:700; color:#1c1410; }
 .card-price.a { color:#b45309; }
-.card-sep    { font-size:11px; color:#c8bfb0; }
-.card-bids   { font-size:11px; color:#b8a898; }
-.card-time   { font-size:11px; margin-left:auto; color:#b8a898; }
+.card-sep  { font-size:11px; color:#c8bfb0; }
+.card-bids { font-size:11px; color:#b8a898; }
+.card-time { font-size:11px; margin-left:auto; color:#b8a898; white-space:nowrap; }
 .card-time.r { color:#dc2626; font-weight:700; }
-.score-bar   { margin-top:8px; display:flex; align-items:center; gap:6px; }
+.score-bar   { margin-top:7px; display:flex; align-items:center; gap:6px; }
 .score-track { flex:1; height:3px; background:#f0ebe0; border-radius:2px; overflow:hidden; }
 .score-fill  { height:100%; border-radius:2px; background:linear-gradient(90deg,#d97706,#fbbf24); }
 .score-lbl   { font-size:9px; color:#c8bfb0; white-space:nowrap; }
-.card-arrow  { color:#ddd8d0; font-size:16px; transition:all 0.18s; flex-shrink:0; }
-.card:hover .card-arrow { color:#d97706; transform:translateX(3px); }
+
+/* Watchlist panel */
+.wl-panel { background:#fff; border:1px solid #fca5a5; border-radius:14px; padding:16px; margin-bottom:14px; animation:shimIn 0.2s ease; }
+.wl-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.wl-title { font-family:‘Lora’,serif; font-size:13px; font-weight:600; color:#dc2626; }
+.wl-clear { font-size:10px; color:#c8bfb0; cursor:pointer; border:none; background:none; }
+.wl-clear:hover { color:#dc2626; }
+.wl-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #fef2f2; }
+.wl-item:last-child { border-bottom:none; padding-bottom:0; }
+.wl-img { width:40px; height:40px; border-radius:6px; overflow:hidden; background:#f5f0e6; flex-shrink:0; }
+.wl-img img { width:100%; height:100%; object-fit:cover; }
+.wl-img-ph { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:18px; background:linear-gradient(135deg,#f5f0e6,#ede8db); border-radius:6px; }
+.wl-info { flex:1; min-width:0; }
+.wl-name { font-family:‘Lora’,serif; font-size:11px; color:#2c2416; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.wl-price { font-size:10px; color:#b8a898; margin-top:2px; }
+.wl-remove { background:none; border:none; cursor:pointer; color:#fca5a5; font-size:16px; }
+.wl-remove:hover { color:#dc2626; }
+.wl-empty { font-size:11px; color:#c8bfb0; text-align:center; padding:8px 0; }
+.wl-view { display:inline-block; font-size:9px; color:#b45309; text-decoration:none; margin-top:2px; }
 
 .empty { padding:36px; text-align:center; background:#fff; border-radius:14px; border:1px solid #e8e2d8; }
 .empty-icon { font-size:30px; margin-bottom:10px; }
@@ -147,21 +191,48 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
   <div id="notifBanner"></div>
   <div id="alertLog"></div>
 
+  <!-- Watchlist panel -->
+
+  <div id="wlPanel" style="display:none"></div>
+
+  <!-- Search -->
+
   <div class="search-wrap">
     <input class="search-input" id="searchInput" type="text" placeholder="Search e.g. Seiko 6138, Omega Seamaster…" oninput="onSearchType()" onkeydown="if(event.key==='Enter')runSearch()">
     <button class="search-clear" id="searchClear" onclick="clearSearch()">✕</button>
     <button class="search-go" onclick="runSearch()">Search</button>
   </div>
 
+  <!-- Brands -->
+
+  <div class="section-lbl">BRAND</div>
   <div class="brands">
     <button class="brand on" onclick="setBrand('all')">All</button>
-    <button class="brand"    onclick="setBrand('seiko')">Seiko</button>
-    <button class="brand"    onclick="setBrand('citizen')">Citizen</button>
-    <button class="brand"    onclick="setBrand('orient')">Orient</button>
-    <button class="brand"    onclick="setBrand('omega')">Omega</button>
-    <button class="brand"    onclick="setBrand('longines')">Longines</button>
-    <button class="brand"    onclick="setBrand('tissot')">Tissot</button>
+    <button class="brand" onclick="setBrand('seiko')">Seiko</button>
+    <button class="brand" onclick="setBrand('citizen')">Citizen</button>
+    <button class="brand" onclick="setBrand('orient')">Orient</button>
+    <button class="brand" onclick="setBrand('omega')">Omega</button>
+    <button class="brand" onclick="setBrand('longines')">Longines</button>
+    <button class="brand" onclick="setBrand('tissot')">Tissot</button>
+    <button class="brand" onclick="setBrand('bulova')">Bulova</button>
+    <button class="brand" onclick="setBrand('casio')">Casio</button>
+    <button class="brand" onclick="setBrand('hamilton')">Hamilton</button>
+    <button class="brand" onclick="setBrand('rado')">Rado</button>
+    <button class="brand" onclick="setBrand('tag heuer')">Tag Heuer</button>
+    <button class="brand" onclick="setBrand('zenith')">Zenith</button>
   </div>
+
+  <!-- Condition -->
+
+  <div class="section-lbl">CONDITION</div>
+  <div class="condition-row">
+    <button class="cond on" onclick="setCond('all')">All conditions</button>
+    <button class="cond" onclick="setCond('working')">✓ Working</button>
+    <button class="cond" onclick="setCond('spares')">🔧 Spares / Repairs</button>
+    <button class="cond" onclick="setCond('unspecified')">? Not specified</button>
+  </div>
+
+  <!-- Tabs -->
 
   <div class="tabs">
     <button class="tab on" onclick="setTab(0,this)">◈ Seiko Vintage</button>
@@ -169,9 +240,12 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
     <button class="tab"    onclick="setTab(2,this)">◎ All Vintage</button>
   </div>
 
+  <!-- Controls -->
+
   <div class="controls">
     <button class="pill" id="snipeBtn" onclick="toggleSnipe()">⚡ Snipe OFF</button>
     <button class="pill" id="priceBtn" onclick="togglePrice()">£ Price cap</button>
+    <button class="pill" id="wlBtn" onclick="toggleWatchlist()">♡ Watchlist</button>
     <select class="sort-sel" id="sortSel" onchange="setSort(this.value)">
       <option value="score">Best deal</option>
       <option value="ending">Ending soonest</option>
@@ -180,6 +254,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
     </select>
     <button class="refresh-btn" onclick="doFetch()">↻</button>
   </div>
+
+  <!-- Price slider -->
 
   <div class="slider-box" id="sliderBox" style="display:none">
     <div class="slider-hd">
@@ -190,6 +266,8 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
     <div class="slider-limits"><span>£5</span><span>£500</span></div>
   </div>
 
+  <!-- Countdown -->
+
   <div class="cdwn">
     <div class="cdwn-hd">
       <span class="cdwn-lbl">AUTO-REFRESH</span>
@@ -198,17 +276,24 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; h
     <div class="cdwn-track"><div class="cdwn-fill" id="cdwnFill" style="width:100%"></div></div>
   </div>
 
+  <!-- Stats -->
+
   <div class="stats" id="statsBox" style="display:none">
     <div class="stat"><div class="stat-v" id="sCount" style="color:#1c1410">0</div><div class="stat-l">AUCTIONS</div></div>
     <div class="stat"><div class="stat-v" id="sHot"   style="color:#d97706">0</div><div class="stat-l">HOT BUYS</div></div>
     <div class="stat"><div class="stat-v" id="sLow"   style="color:#16a34a">—</div><div class="stat-l">LOWEST BID</div></div>
+    <div class="stat"><div class="stat-v" id="sWl"    style="color:#dc2626">0</div><div class="stat-l">WATCHLIST</div></div>
   </div>
+
+  <!-- Listings -->
 
   <div class="listings" id="listings"></div>
 
+  <!-- Footer -->
+
   <div class="footer" id="footer" style="display:none">
     <a class="cta" id="ctaBtn" href="#" target="_blank">VIEW ALL ON EBAY.CO.UK →</a>
-    <p class="footer-note">Live eBay UK data · click any listing to view on eBay</p>
+    <p class="footer-note">Live eBay UK data · click any listing to view · ♡ to save to watchlist</p>
   </div>
 
 </div>
@@ -221,47 +306,114 @@ const TABS = [
   { query:"vintage watch auction" },
 ];
 const VALUE_SIGNALS  = ["no reserve","nr","starting","0.99","estate","collection","lot","bundle","untested","as-is","spares","repair"];
-const BRAND_SIGNALS  = ["seiko","citizen","orient","omega","longines","tissot","bulova","casio"];
-const LUXURY_SIGNALS = ["omega","longines","rolex","zenith","rado","tag heuer"];
+const LUXURY_SIGNALS = ["omega","longines","rolex","zenith","rado","tag heuer","hamilton"];
 
 // ── State ─────────────────────────────────────────────────────────────────
-let activeTab   = 0;
-let activeBrand = “all”;
-let customQuery = “”;
-let snipeOn     = false;
-let priceOn     = false;
-let maxPrice    = 150;
-let sortMode    = “score”;
-let cdwnSecs    = REFRESH_SEC;
-let cdwnTimer   = null;
-let auctions    = [];
-let rawResults  = [];
-let seenHot     = new Set();
-let seenSnipe   = new Set();
-let alerts      = [];
+let activeTab    = 0;
+let activeBrand  = “all”;
+let activeCond   = “all”;
+let customQuery  = “”;
+let snipeOn      = false;
+let priceOn      = false;
+let maxPrice     = 150;
+let sortMode     = “score”;
+let showWatchlist = false;
+let cdwnSecs     = REFRESH_SEC;
+let cdwnTimer    = null;
+let auctions     = [];
+let rawResults   = [];
+let seenHot      = new Set();
+let seenSnipe    = new Set();
+let alerts       = [];
 
-// ── Scoring ───────────────────────────────────────────────────────────────
+// ── Watchlist (localStorage) ──────────────────────────────────────────────
+function wlLoad() {
+try { return JSON.parse(localStorage.getItem(“wl”) || “[]”); } catch(e) { return []; }
+}
+function wlSave(items) {
+try { localStorage.setItem(“wl”, JSON.stringify(items)); } catch(e) {}
+}
+function wlHas(id)   { return wlLoad().some(x => x.id === id); }
+function wlAdd(item) {
+const items = wlLoad();
+if (!items.some(x => x.id === item.id)) { items.unshift(item); wlSave(items); }
+renderWatchlistPanel(); updateWlStat();
+}
+function wlRemove(id) {
+wlSave(wlLoad().filter(x => x.id !== id));
+renderWatchlistPanel(); updateWlStat();
+// Refresh heart buttons
+document.querySelectorAll(`.watchlist-btn[data-id="${id}"]`).forEach(b => {
+b.textContent = “♡”; b.classList.remove(“saved”);
+});
+}
+function wlToggle(item) {
+if (wlHas(item.id)) { wlRemove(item.id); return false; }
+else { wlAdd(item); return true; }
+}
+function updateWlStat() {
+document.getElementById(“sWl”).textContent = wlLoad().length;
+}
+
+function renderWatchlistPanel() {
+const panel = document.getElementById(“wlPanel”);
+if (!showWatchlist) { panel.style.display = “none”; return; }
+const items = wlLoad();
+panel.style.display = “block”;
+if (!items.length) {
+panel.innerHTML = `<div class="wl-panel"><div class="wl-header"><span class="wl-title">♡ Watchlist</span></div><div class="wl-empty">No saved listings yet — tap ♡ on any card</div></div>`;
+return;
+}
+panel.innerHTML = `<div class="wl-panel"> <div class="wl-header"> <span class="wl-title">♡ Watchlist (${items.length})</span> <button class="wl-clear" onclick="wlClearAll()">Clear all</button> </div> ${items.map(item => `
+<div class="wl-item">
+<div class="wl-img">
+${item.image
+? `<img src="${item.image}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=wl-img-ph>⌚</div>'">`
+: `<div class="wl-img-ph">⌚</div>`}
+</div>
+<div class="wl-info">
+<div class="wl-name">${item.title}</div>
+<div class="wl-price">£${item.price.toFixed(2)} · saved ${item.savedAt||””}</div>
+<a class="wl-view" href="${item.url}" target="_blank">View on eBay →</a>
+</div>
+<button class="wl-remove" onclick="wlRemove('${item.id}')">✕</button>
+</div>
+`).join(””)}
+
+  </div>`;
+}
+function wlClearAll() {
+  wlSave([]);
+  renderWatchlistPanel();
+  updateWlStat();
+  document.querySelectorAll(".watchlist-btn").forEach(b => { b.textContent="♡"; b.classList.remove("saved"); });
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function parseMins(t) {
+if (!t || t === “unknown”) return 9999;
+const d = t.match(/(\d+)d/), h = t.match(/(\d+)h/), m = t.match(/(\d+)m/);
+return (d?parseInt(d[1])*1440:0) + (h?parseInt(h[1])*60:0) + (m?parseInt(m[1]):0);
+}
+
 function scoreItem(a) {
 let s = 0;
 const l = (a.title || “”).toLowerCase();
 VALUE_SIGNALS.forEach(sig => { if (l.includes(sig)) s += 2; });
-if (a.bids < 2)   s += 4;
-if (a.bids < 5)   s += 2;
-if (a.price < 20)  s += 4;
-if (a.price < 50)  s += 2;
-if (a.price < 100) s += 1;
-BRAND_SIGNALS.forEach(b => { if (l.includes(b)) s += 1; });
+if (a.bids < 2) s += 4; if (a.bids < 5) s += 2;
+if (a.price < 20) s += 4; if (a.price < 50) s += 2; if (a.price < 100) s += 1;
 LUXURY_SIGNALS.forEach(b => { if (l.includes(b)) s += 3; });
 const mins = parseMins(a.timeLeft);
-if (mins < 60)  s += 2;
-if (mins < 180) s += 1;
+if (mins < 60) s += 2; if (mins < 180) s += 1;
 return Math.min(s, 20);
 }
 
-function parseMins(t) {
-if (!t || t === “unknown”) return 9999;
-const h = t.match(/(\d+)h/), m = t.match(/(\d+)m/);
-return (h ? parseInt(h[1]) * 60 : 0) + (m ? parseInt(m[1]) : 0);
+function getConditionLabel(c) {
+if (!c) return “unknown”;
+const l = c.toLowerCase();
+if (l.includes(“for parts”) || l.includes(“spares”) || l.includes(“not working”) || l.includes(“repair”)) return “spares”;
+if (l.includes(“new”) || l.includes(“excellent”) || l.includes(“very good”) || l.includes(“good”) || l.includes(“used”) || l.includes(“pre-owned”) || l.includes(“working”)) return “working”;
+return “unspecified”;
 }
 
 function getQuery() {
@@ -287,15 +439,22 @@ let timeLeft = “unknown”;
 if (item.itemEndDate) {
 const ms = new Date(item.itemEndDate) - Date.now();
 if (ms > 0) {
-const tm = Math.floor(ms / 60000);
-timeLeft = `${Math.floor(tm / 60)}h ${tm % 60}m`;
+const tm   = Math.floor(ms / 60000);
+const days = Math.floor(tm / 1440);
+const hrs  = Math.floor((tm % 1440) / 60);
+const mins = tm % 60;
+timeLeft = days > 0 ? `${days}d ${hrs}h` : `${hrs}h ${mins}m`;
 } else { timeLeft = “ended”; }
 }
+const rawCond = item.condition || item.conditionDisplayName || “”;
 return {
-id: item.itemId,
-title: item.title || “Unknown item”,
+id:        item.itemId,
+title:     item.title || “Unknown item”,
 price, bids, timeLeft,
-url: item.itemWebUrl || `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Auction=1&LH_PrefLoc=1`,
+image:     item.image?.imageUrl || item.thumbnailImages?.[0]?.imageUrl || null,
+condition: rawCond,
+condLabel: getConditionLabel(rawCond),
+url:       item.itemWebUrl || `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(q)}&LH_Auction=1&LH_PrefLoc=1`,
 };
 }).filter(a => a.timeLeft !== “ended” && a.price > 0);
 }
@@ -305,11 +464,11 @@ function initNotif() {
 const el = document.getElementById(“notifBanner”);
 if (!(“Notification” in window)) return;
 if (Notification.permission === “granted”) {
-el.innerHTML = `<div class="banner nok">🔔 Alerts active — HOT BUYs &amp; auctions ending within 1 hour</div>`;
+el.innerHTML = `<div class="banner nok">🔔 Alerts active</div>`;
 } else if (Notification.permission === “default”) {
 el.innerHTML = `<div class="notif-ask"><span style="font-size:18px">🔔</span><div><h4>Enable deal alerts</h4><p>Get notified for HOT BUYs and auctions ending soon</p></div><button onclick="askNotif()">Enable</button></div>`;
 } else {
-el.innerHTML = `<div class="banner nno">🔕 Notifications blocked — enable in browser settings</div>`;
+el.innerHTML = `<div class="banner nno">🔕 Notifications blocked</div>`;
 }
 }
 function askNotif() { Notification.requestPermission().then(() => initNotif()); }
@@ -320,9 +479,8 @@ try { new Notification(title, { body, tag }); } catch(e) {}
 function checkNotif(list) {
 const now = new Date().toLocaleTimeString(“en-GB”, { hour:“2-digit”, minute:“2-digit” });
 list.forEach(a => {
-const sc   = scoreItem(a);
-const mins = parseMins(a.timeLeft);
-const short = a.title.split(” “).slice(0, 5).join(” “);
+const sc = scoreItem(a), mins = parseMins(a.timeLeft);
+const short = a.title.split(” “).slice(0,5).join(” “);
 if (sc >= 10 && !seenHot.has(a.id)) {
 seenHot.add(a.id);
 fireNotif(“🔥 HOT BUY!”, `${short} — £${a.price.toFixed(2)}, ${a.timeLeft} left`, `hot-${a.id}`);
@@ -347,21 +505,21 @@ document.getElementById(“alertLog”).innerHTML =
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
-function keywordBadges(title) {
-const l = title.toLowerCase();
-const badges = [];
-if (l.includes(“no reserve”) || l.includes(” nr “) || l.match(/\bnr\b/)) badges.push(`<span class="bdg nr">No Reserve</span>`);
-if (l.includes(“estate”) || l.includes(“collection find”)) badges.push(`<span class="bdg estate">Estate find</span>`);
-if (l.includes(“untested”) || l.includes(“spares”) || l.includes(“repair”) || l.includes(“as-is”)) badges.push(`<span class="bdg untested">Untested</span>`);
-return badges.join(””);
+function condBadge(a) {
+if (a.condLabel === “spares”)      return `<span class="bdg cond-s">🔧 Spares/Repairs</span>`;
+if (a.condLabel === “unspecified”) return `<span class="bdg cond-u">? Unspecified</span>`;
+return “”; // working is the norm, no badge needed unless HOT etc
 }
-
+function keywordBadges(title) {
+const l = title.toLowerCase(), out = [];
+if (l.includes(“no reserve”) || /\bnr\b/.test(l)) out.push(`<span class="bdg nr">No Reserve</span>`);
+if (l.includes(“estate”) || l.includes(“collection find”)) out.push(`<span class="bdg estate">Estate</span>`);
+return out.join(””);
+}
 function timeBadge(t) {
 const m = parseMins(t);
 if (m > 120) return “”;
-return m < 60
-? `<span class="bdg snipe">⚡ SNIPE NOW</span>`
-: `<span class="bdg ending">⏰ ENDING SOON</span>`;
+return m < 60 ? `<span class="bdg snipe">⚡ SNIPE NOW</span>` : `<span class="bdg ending">⏰ ENDING SOON</span>`;
 }
 
 function cardHTML(a, rank) {
@@ -369,10 +527,28 @@ const sc     = scoreItem(a);
 const isHot  = sc >= 10;
 const mins   = parseMins(a.timeLeft);
 const urgent = mins < 60 && mins > 0;
-const cls    = [“card”, isHot ? “hc” : “”, urgent ? “uc” : “”].filter(Boolean).join(” “);
+const saved  = wlHas(a.id);
+const cls    = [“card”, isHot?“hc”:””, urgent?“uc”:””, saved?“wl”:””].filter(Boolean).join(” “);
 const scorePct = Math.min((sc / 20) * 100, 100);
 
-return `<a class="${cls}" href="${a.url}" target="_blank" style="animation-delay:${rank * 0.06}s"> <div class="card-inner"> <div class="card-rank">#${rank}</div> <div class="card-body"> <div class="card-badges"> ${isHot ? '<span class="bdg hot">🔥 HOT BUY</span>' : ""} ${timeBadge(a.timeLeft)} ${keywordBadges(a.title)} </div> <div class="card-title">${a.title}</div> <div class="card-prices"> <span class="card-price ${isHot ? "a" : ""}">£${a.price.toFixed(2)}</span> <span class="card-sep">·</span> <span class="card-bids">${a.bids === 0 ? "no bids" : `${a.bids} bid${a.bids !== 1 ? “s” : “”}`}</span> <span class="card-time ${urgent ? "r" : ""}">⏱ ${a.timeLeft}</span> </div> <div class="score-bar"> <div class="score-track"><div class="score-fill" style="width:${scorePct}%"></div></div> <span class="score-lbl">Deal score ${sc}/20</span> </div> </div> <div class="card-arrow">→</div> </div> </a>`;
+const imgHtml = a.image
+? `<img src="${a.image}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<div class=card-img-placeholder>⌚</div>'">`
+: `<div class="card-img-placeholder">⌚</div>`;
+
+return `<a class="${cls}" href="${a.url}" target="_blank" style="animation-delay:${rank*0.06}s" id="card-${a.id}"> <div class="card-inner"> <div class="card-img">${imgHtml}</div> <div class="card-content"> <div class="card-top"> <div class="card-badges"> ${isHot ? '<span class="bdg hot">🔥 HOT BUY</span>' : ""} ${timeBadge(a.timeLeft)} ${condBadge(a)} ${keywordBadges(a.title)} </div> <button class="watchlist-btn ${saved?"saved":""}" data-id="${a.id}" onclick="event.preventDefault();event.stopPropagation();handleWlToggle('${a.id}')" title="${saved?"Remove from watchlist":"Save to watchlist"}"> ${saved ? "♥" : "♡"} </button> </div> <div class="card-title">${a.title}</div> <div class="card-prices"> <span class="card-price ${isHot?"a":""}">£${a.price.toFixed(2)}</span> <span class="card-sep">·</span> <span class="card-bids">${a.bids===0?"no bids":`${a.bids} bid${a.bids!==1?“s”:””}`}</span> <span class="card-time ${urgent?"r":""}">⏱ ${a.timeLeft}</span> </div> <div class="score-bar"> <div class="score-track"><div class="score-fill" style="width:${scorePct}%"></div></div> <span class="score-lbl">Deal score ${sc}/20</span> </div> </div> </div> </a>`;
+}
+
+function handleWlToggle(id) {
+const a = rawResults.find(x => x.id === id);
+if (!a) return;
+const now = new Date().toLocaleTimeString(“en-GB”,{hour:“2-digit”,minute:“2-digit”});
+const saved = wlToggle({ …a, savedAt: now });
+const btn = document.querySelector(`.watchlist-btn[data-id="${id}"]`);
+const card = document.getElementById(`card-${id}`);
+if (btn) { btn.textContent = saved ? “♥” : “♡”; btn.classList.toggle(“saved”, saved); }
+if (card) card.classList.toggle(“wl”, saved);
+renderWatchlistPanel();
+updateWlStat();
 }
 
 function render() {
@@ -383,28 +559,30 @@ document.getElementById(“statsBox”).style.display = “none”;
 document.getElementById(“footer”).style.display   = “none”;
 return;
 }
-el.innerHTML = auctions.map((a, i) => cardHTML(a, i + 1)).join(””);
+el.innerHTML = auctions.map((a,i) => cardHTML(a, i+1)).join(””);
 const hotCount = auctions.filter(a => scoreItem(a) >= 10).length;
 document.getElementById(“sCount”).textContent = auctions.length;
 document.getElementById(“sHot”).textContent   = hotCount;
-document.getElementById(“sLow”).textContent   = `£${Math.min(...auctions.map(a => a.price)).toFixed(2)}`;
+document.getElementById(“sLow”).textContent   = `£${Math.min(...auctions.map(a=>a.price)).toFixed(2)}`;
+updateWlStat();
 document.getElementById(“statsBox”).style.display = “flex”;
 document.getElementById(“footer”).style.display   = “block”;
-document.getElementById(“ctaBtn”).href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(getQuery())}&LH_Auction=1&LH_PrefLoc=1${priceOn ? `&_udhi=${maxPrice}` : ""}`;
+document.getElementById(“ctaBtn”).href = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(getQuery())}&LH_Auction=1&LH_PrefLoc=1${priceOn?`&_udhi=${maxPrice}`:""}`;
 }
 
 function applyFiltersAndSort(list) {
 let r = […list];
 if (snipeOn) r = r.filter(a => parseMins(a.timeLeft) <= 120);
-if (sortMode === “ending” || snipeOn) r.sort((a, b) => parseMins(a.timeLeft) - parseMins(b.timeLeft));
-else if (sortMode === “price_asc”)  r.sort((a, b) => a.price - b.price);
-else if (sortMode === “price_desc”) r.sort((a, b) => b.price - a.price);
-else r.sort((a, b) => scoreItem(b) - scoreItem(a));
+if (activeCond !== “all”) r = r.filter(a => a.condLabel === activeCond);
+if (sortMode === “ending” || snipeOn) r.sort((a,b) => parseMins(a.timeLeft)-parseMins(b.timeLeft));
+else if (sortMode === “price_asc”)  r.sort((a,b) => a.price-b.price);
+else if (sortMode === “price_desc”) r.sort((a,b) => b.price-a.price);
+else r.sort((a,b) => scoreItem(b)-scoreItem(a));
 return r.slice(0, 10);
 }
 
 // ── Main fetch ────────────────────────────────────────────────────────────
-async function doFetch(silent = false) {
+async function doFetch(silent=false) {
 if (!silent) {
 document.getElementById(“listings”).innerHTML = [0,1,2,3].map(i =>
 `<div class="skel" style="opacity:${0.65-i*0.1};animation:shimIn 0.3s ease ${i*0.07}s both"></div>`
@@ -414,28 +592,20 @@ document.getElementById(“footer”).style.display   = “none”;
 document.getElementById(“apiBanner”).innerHTML    = “”;
 auctions = []; rawResults = [];
 }
-
-const dot = document.getElementById(“dot”);
-const txt = document.getElementById(“statusTxt”);
-dot.className = “dot loading”;
-txt.textContent = “fetching auctions…”;
-
+const dot = document.getElementById(“dot”), txt = document.getElementById(“statusTxt”);
+dot.className = “dot loading”; txt.textContent = “fetching auctions…”;
 try {
 rawResults = await fetchListings();
 if (!rawResults.length) throw new Error(“No results for this search”);
 document.getElementById(“apiBanner”).innerHTML = `<div class="banner live">✓ Live eBay UK · Production</div>`;
-dot.className   = “dot live”;
-txt.textContent = “ebay uk · live”;
+dot.className = “dot live”; txt.textContent = “ebay uk · live”;
 } catch(e) {
 document.getElementById(“apiBanner”).innerHTML = `<div class="banner warn">⚠ ${e.message}</div>`;
-dot.className   = “dot warn”;
-txt.textContent = “no results”;
+dot.className = “dot warn”; txt.textContent = “no results”;
 rawResults = [];
 }
-
 document.getElementById(“statusTime”).textContent =
-new Date().toLocaleTimeString(“en-GB”, { hour:“2-digit”, minute:“2-digit” });
-
+new Date().toLocaleTimeString(“en-GB”, {hour:“2-digit”,minute:“2-digit”});
 auctions = applyFiltersAndSort(rawResults);
 render();
 checkNotif(auctions);
@@ -447,9 +617,8 @@ if (cdwnTimer) clearInterval(cdwnTimer);
 cdwnSecs = REFRESH_SEC;
 cdwnTimer = setInterval(() => {
 cdwnSecs–;
-const pct = (cdwnSecs / REFRESH_SEC) * 100;
-const m = Math.floor(cdwnSecs / 60), s = cdwnSecs % 60;
-document.getElementById(“cdwnTime”).textContent = `${m}:${s.toString().padStart(2, "0")}`;
+const pct = (cdwnSecs/REFRESH_SEC)*100, m = Math.floor(cdwnSecs/60), s = cdwnSecs%60;
+document.getElementById(“cdwnTime”).textContent = `${m}:${s.toString().padStart(2,"0")}`;
 document.getElementById(“cdwnFill”).style.width = `${pct}%`;
 if (cdwnSecs <= 0) { cdwnSecs = REFRESH_SEC; doFetch(true); }
 }, 1000);
@@ -457,80 +626,94 @@ if (cdwnSecs <= 0) { cdwnSecs = REFRESH_SEC; doFetch(true); }
 
 // ── Controls ──────────────────────────────────────────────────────────────
 function setTab(i, btn) {
-activeTab = i; customQuery = “”; activeBrand = “all”;
-document.getElementById(“searchInput”).value = “”;
-document.getElementById(“searchClear”).className = “search-clear”;
-document.querySelectorAll(”.tab”).forEach((t, j) => t.className = “tab” + (j === i ? “ on” : “”));
-document.querySelectorAll(”.brand”).forEach(b => b.className = “brand” + (b.textContent === “All” ? “ on” : “”));
+activeTab=i; customQuery=””; activeBrand=“all”;
+document.getElementById(“searchInput”).value=””;
+document.getElementById(“searchClear”).className=“search-clear”;
+document.querySelectorAll(”.tab”).forEach((t,j) => t.className=“tab”+(j===i?” on”:””));
+document.querySelectorAll(”.brand”).forEach(b => b.className=“brand”+(b.textContent===“All”?” on”:””));
 startCountdown(); doFetch();
 }
 
 function setBrand(brand) {
-activeBrand = brand; customQuery = “”;
-document.getElementById(“searchInput”).value = “”;
-document.getElementById(“searchClear”).className = “search-clear”;
+activeBrand=brand; customQuery=””;
+document.getElementById(“searchInput”).value=””;
+document.getElementById(“searchClear”).className=“search-clear”;
 document.querySelectorAll(”.brand”).forEach(b => {
-const match = brand === “all” ? b.textContent === “All” : b.textContent.toLowerCase() === brand;
-b.className = “brand” + (match ? “ on” : “”);
+const match = brand===“all” ? b.textContent===“All” : b.textContent.toLowerCase()===brand;
+b.className = “brand”+(match?” on”:””);
 });
 startCountdown(); doFetch();
 }
 
-function onSearchType() {
-const v = document.getElementById(“searchInput”).value;
-document.getElementById(“searchClear”).className = “search-clear” + (v ? “ show” : “”);
+function setCond(cond) {
+activeCond = cond;
+document.querySelectorAll(”.cond”).forEach(b => {
+const map = {all:“All conditions”, working:“✓ Working”, spares:“🔧 Spares / Repairs”, unspecified:”? Not specified”};
+b.className = “cond”+(b.textContent.trim()===map[cond]?” on”:””);
+});
+auctions = applyFiltersAndSort(rawResults);
+render();
 }
 
+function onSearchType() {
+const v = document.getElementById(“searchInput”).value;
+document.getElementById(“searchClear”).className = “search-clear”+(v?” show”:””);
+}
 function runSearch() {
 const v = document.getElementById(“searchInput”).value.trim();
 if (!v) return;
-customQuery = v; activeBrand = “all”;
-document.querySelectorAll(”.brand”).forEach(b => b.className = “brand” + (b.textContent === “All” ? “ on” : “”));
+customQuery=v; activeBrand=“all”;
+document.querySelectorAll(”.brand”).forEach(b => b.className=“brand”+(b.textContent===“All”?” on”:””));
 startCountdown(); doFetch();
 }
-
 function clearSearch() {
-customQuery = “”;
-document.getElementById(“searchInput”).value = “”;
-document.getElementById(“searchClear”).className = “search-clear”;
+customQuery=””;
+document.getElementById(“searchInput”).value=””;
+document.getElementById(“searchClear”).className=“search-clear”;
 doFetch();
 }
 
 function toggleSnipe() {
-snipeOn = !snipeOn;
-const btn = document.getElementById(“snipeBtn”);
-btn.className   = “pill” + (snipeOn ? “ on” : “”);
-btn.textContent = `⚡ Snipe ${snipeOn ? "ON" : "OFF"}`;
-auctions = applyFiltersAndSort(rawResults);
-render();
+snipeOn=!snipeOn;
+const btn=document.getElementById(“snipeBtn”);
+btn.className=“pill”+(snipeOn?” on”:””);
+btn.textContent=`⚡ Snipe ${snipeOn?"ON":"OFF"}`;
+auctions=applyFiltersAndSort(rawResults); render();
 }
 
 function togglePrice() {
-priceOn = !priceOn;
-const btn = document.getElementById(“priceBtn”);
-btn.className   = “pill” + (priceOn ? “ on” : “”);
-btn.textContent = priceOn ? `£ ≤ £${maxPrice}` : “£ Price cap”;
-document.getElementById(“sliderBox”).style.display = priceOn ? “block” : “none”;
+priceOn=!priceOn;
+const btn=document.getElementById(“priceBtn”);
+btn.className=“pill”+(priceOn?” on”:””);
+btn.textContent=priceOn?`£ ≤ £${maxPrice}`:“£ Price cap”;
+document.getElementById(“sliderBox”).style.display=priceOn?“block”:“none”;
 doFetch();
 }
 
 function slidePrice(v) {
-maxPrice = parseInt(v);
-document.getElementById(“sliderVal”).textContent = `£${maxPrice}`;
-document.getElementById(“priceBtn”).textContent  = `£ ≤ £${maxPrice}`;
-const pct = ((maxPrice - 5) / 495) * 100;
-document.getElementById(“priceRange”).style.background =
-`linear-gradient(90deg,#d97706 ${pct}%,#e8e2d8 ${pct}%)`;
+maxPrice=parseInt(v);
+document.getElementById(“sliderVal”).textContent=`£${maxPrice}`;
+document.getElementById(“priceBtn”).textContent=`£ ≤ £${maxPrice}`;
+const pct=((maxPrice-5)/495)*100;
+document.getElementById(“priceRange”).style.background=`linear-gradient(90deg,#d97706 ${pct}%,#e8e2d8 ${pct}%)`;
 }
 
 function setSort(val) {
-sortMode = val;
-auctions = applyFiltersAndSort(rawResults);
-render();
+sortMode=val;
+auctions=applyFiltersAndSort(rawResults); render();
+}
+
+function toggleWatchlist() {
+showWatchlist=!showWatchlist;
+const btn=document.getElementById(“wlBtn”);
+btn.className=“pill”+(showWatchlist?” watchlist-on”:””);
+btn.textContent=showWatchlist?“♥ Watchlist”:“♡ Watchlist”;
+renderWatchlistPanel();
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
 initNotif();
+updateWlStat();
 startCountdown();
 doFetch();
 </script>
