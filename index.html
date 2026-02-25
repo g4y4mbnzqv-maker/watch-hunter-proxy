@@ -570,7 +570,7 @@ document.getElementById(“ctaBtn”).href = `https://www.ebay.co.uk/sch/i.html?
 }
 
 function applyFiltersAndSort(list) {
-let r = […list];
+let r = let r = [...list];
 if (snipeOn) r = r.filter(a => parseMins(a.timeLeft) <= 120);
 if (activeCond !== “all”) r = r.filter(a => a.condLabel === activeCond);
 if (sortMode === “ending” || snipeOn) r.sort((a,b) => parseMins(a.timeLeft)-parseMins(b.timeLeft));
