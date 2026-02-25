@@ -542,7 +542,7 @@ function handleWlToggle(id) {
 const a = rawResults.find(x => x.id === id);
 if (!a) return;
 const now = new Date().toLocaleTimeString(“en-GB”,{hour:“2-digit”,minute:“2-digit”});
-const saved = wlToggle({ ...a, savedAt: now });
+const saved = wlToggle({...a, savedAt: now });
 const btn = document.querySelector(`.watchlist-btn[data-id="${id}"]`);
 const card = document.getElementById(`card-${id}`);
 if (btn) { btn.textContent = saved ? “♥” : “♡”; btn.classList.toggle(“saved”, saved); }
