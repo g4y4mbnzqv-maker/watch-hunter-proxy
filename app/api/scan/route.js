@@ -10,9 +10,8 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
 
   const brand = searchParams.get("brand") || "seiko";
-  const model = searchParams.get("model") || "6309";
 
-  const query = `${brand} ${model}`;
+  const query = brand; // brand only
 
   const sold = await search({
     q: query,
@@ -25,35 +24,44 @@ export async function GET(req) {
     .filter(Boolean);
 
   if (!soldPrices || soldPrices.length < 5) {
-    return Response.json({ error: "Not enough sold data" });
+    return Response.json({ results: [] });
   }
 
   const avgSold = avg(soldPrices);
 
   const live = await search({
     q: query,
-    limit: 15,
+    limit: 20,
     sort: "newlyListed",
     filter:
       "buyingOptions:{AUCTION},itemLocationCountry:GB,priceCurrency:GBP",
   });
 
-  const results = live.itemSummaries?.map(item => {
-    const livePrice = parseFloat(item.price?.value || 0);
-    const discount = 1 - livePrice / avgSold;
+  const MIN_DISCOUNT = 0.35;
+  const MAX_BID_FACTOR = 0.70;
 
-    return {
-      title: item.title,
-      brand,
-      model,
-      livePrice,
-      avgSold,
-      discount,
-      maxBid: (avgSold * 0.70).toFixed(0),
-      url: item.itemWebUrl,
-      image: item.image?.imageUrl,
-    };
-  });
+  const results = (live.itemSummaries || [])
+    .map(item => {
+      const livePrice = parseFloat(item.price?.value || 0);
+      const discount = 1 - livePrice / avgSold;
+      const maxBid = avgSold * MAX_BID_FACTOR;
+
+      return {
+        title: item.title,
+        livePrice,
+        avgSold,
+        discount,
+        maxBid: Math.max(0, maxBid).toFixed(0),
+        url: item.itemWebUrl,
+        image: item.image?.imageUrl,
+      };
+    })
+    .filter(
+      x =>
+        x.discount >= MIN_DISCOUNT &&
+        x.livePrice <= parseFloat(x.maxBid)
+    )
+    .sort((a, b) => b.discount - a.discount);
 
   return Response.json({ results });
 }
