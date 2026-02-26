@@ -3,13 +3,10 @@ import { useState } from "react";
 
 export default function Home() {
   const [brand, setBrand] = useState("seiko");
-  const [model, setModel] = useState("6309");
   const [results, setResults] = useState([]);
 
   async function scan() {
-    const res = await fetch(
-      `/api/scan?brand=${brand}&model=${model}`
-    );
+    const res = await fetch(`/api/scan?brand=${brand}`);
     const data = await res.json();
     setResults(data.results || []);
   }
@@ -18,36 +15,23 @@ export default function Home() {
     <div style={{ padding: 20, maxWidth: 500, margin: "auto" }}>
       <h1 style={{ marginBottom: 20 }}>Watch Hunter</h1>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-        <select
-          value={brand}
-          onChange={e => setBrand(e.target.value)}
-          style={{
-            padding: 10,
-            background: "#1a1a1a",
-            border: "none",
-            color: "white",
-          }}
-        >
-          <option value="seiko">Seiko</option>
-          <option value="omega">Omega</option>
-          <option value="heuer">Heuer</option>
-          <option value="citizen">Citizen</option>
-        </select>
-
-        <input
-          value={model}
-          onChange={e => setModel(e.target.value)}
-          style={{
-            flex: 1,
-            padding: 10,
-            background: "#1a1a1a",
-            border: "none",
-            color: "white",
-          }}
-          placeholder="Model"
-        />
-      </div>
+      <select
+        value={brand}
+        onChange={e => setBrand(e.target.value)}
+        style={{
+          width: "100%",
+          padding: 10,
+          marginBottom: 15,
+          background: "#1a1a1a",
+          border: "none",
+          color: "white",
+        }}
+      >
+        <option value="seiko">Seiko</option>
+        <option value="omega">Omega</option>
+        <option value="heuer">Heuer</option>
+        <option value="citizen">Citizen</option>
+      </select>
 
       <button
         onClick={scan}
@@ -78,7 +62,7 @@ export default function Home() {
             style={{ width: "100%", marginBottom: 10 }}
           />
 
-          <div style={{ fontWeight: 600, marginBottom: 5 }}>
+          <div style={{ fontWeight: 600 }}>
             {item.title}
           </div>
 
