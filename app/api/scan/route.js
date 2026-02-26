@@ -1,4 +1,4 @@
-import { search } from "@/lib/ebay";
+import { search } from "../../../lib/ebay";
 
 export const dynamic = "force-dynamic";
 
