@@ -6,7 +6,6 @@ function medianTopHalf(values) {
   if (!values || values.length < 5) return null;
 
   values.sort((a, b) => a - b);
-
   const topHalf = values.slice(Math.floor(values.length / 2));
   const mid = Math.floor(topHalf.length / 2);
 
@@ -29,17 +28,13 @@ function timeLeftParts(endIso) {
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-
   const brand = searchParams.get("brand") || "seiko";
-  const query = brand;
 
-  // -------------------------
-  // SOLD ITEMS (baseline)
-  // -------------------------
+  // SOLD ITEMS (NO COUNTRY FILTER)
   const sold = await search({
-    q: query,
+    q: brand,
     limit: 30,
-    filter: "soldItems:true,itemLocationCountry:GB",
+    filter: "soldItems:true",
   });
 
   const soldPrices = (sold.itemSummaries || [])
@@ -48,14 +43,11 @@ export async function GET(req) {
 
   const baseline = medianTopHalf(soldPrices);
 
-  // -------------------------
-  // LIVE AUCTIONS
-  // -------------------------
+  // LIVE AUCTIONS (NO COUNTRY FILTER)
   const live = await search({
-    q: query,
+    q: brand,
     limit: 25,
-    sort: "newlyListed",
-    filter: "buyingOptions:{AUCTION},itemLocationCountry:GB,priceCurrency:GBP",
+    filter: "buyingOptions:{AUCTION}",
   });
 
   const summaries = live.itemSummaries || [];
@@ -83,22 +75,14 @@ export async function GET(req) {
         0
       );
 
-    const bidCount = it.bidCount ?? s.bidCount ?? 0;
-    const bidderCount = it.uniqueBidderCount ?? null;
-
-    const discount =
-      baseline && currentBid > 0 ? 1 - currentBid / baseline : null;
-
     return {
       title: s.title,
-      image: s.image?.imageUrl,
-      url: s.itemWebUrl,
       currentBid,
-      bidCount,
-      bidderCount,
+      bidCount: it.bidCount ?? s.bidCount ?? 0,
+      bidderCount: it.uniqueBidderCount ?? null,
       daysLeft,
       hoursLeft,
-      discount,
+      baseline,
     };
   });
 
