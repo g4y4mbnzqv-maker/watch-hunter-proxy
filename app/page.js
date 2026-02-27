@@ -90,32 +90,19 @@ export default function Home() {
             {item.title}
           </div>
 
-          {/* Auction Stats */}
-          <div style={{ fontSize: 14, marginBottom: 6 }}>
-            ⏱ {item.daysLeft}d {item.hoursLeft}h left
-          </div>
+          <div>⏱ {item.daysLeft}d {item.hoursLeft}h left</div>
+          <div>Current Bid: £{item.currentBid}</div>
+          <div>Bidders: {item.bidderCount ?? "—"}</div>
+          <div>Total Bids: {item.bidCount}</div>
 
-          <div style={{ fontSize: 14 }}>
-            Current Bid: £{item.currentBid}
-          </div>
-
-          <div style={{ fontSize: 14 }}>
-            Bidders: {item.bidderCount ?? "—"}
-          </div>
-
-          <div style={{ fontSize: 14, marginBottom: 8 }}>
-            Total Bids: {item.bidCount}
-          </div>
-
-          {/* Opportunity Metrics */}
           <div style={{ marginTop: 10 }}>
-            <div>Avg Sold: £{item.avgSold.toFixed(0)}</div>
+            <div>Baseline Sold: £{item.avgSold.toFixed(0)}</div>
 
             <div style={{ color: "#22c55e", fontWeight: 600 }}>
               Discount {(item.discount * 100).toFixed(1)}%
             </div>
 
-            <div style={{ color: "#eab308", marginBottom: 8 }}>
+            <div style={{ color: "#eab308" }}>
               Max Bid £{item.maxBid}
             </div>
           </div>
