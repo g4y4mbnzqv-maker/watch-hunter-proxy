@@ -4,23 +4,33 @@ import { useState } from "react";
 export default function Home() {
   const [brand, setBrand] = useState("seiko");
   const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   async function scan() {
+    setLoading(true);
     const res = await fetch(`/api/scan?brand=${brand}`);
     const data = await res.json();
     setResults(data.results || []);
+    setLoading(false);
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 500, margin: "auto" }}>
+    <div
+      style={{
+        padding: 20,
+        maxWidth: 500,
+        margin: "auto",
+        fontFamily: "system-ui",
+      }}
+    >
       <h1 style={{ marginBottom: 20 }}>Watch Hunter</h1>
 
       <select
         value={brand}
-        onChange={e => setBrand(e.target.value)}
+        onChange={(e) => setBrand(e.target.value)}
         style={{
           width: "100%",
-          padding: 10,
+          padding: 12,
           marginBottom: 15,
           background: "#1a1a1a",
           border: "none",
@@ -42,10 +52,17 @@ export default function Home() {
           border: "none",
           color: "white",
           marginBottom: 20,
+          cursor: "pointer",
         }}
       >
-        Scan
+        {loading ? "Scanning..." : "Scan"}
       </button>
+
+      {results.length === 0 && !loading && (
+        <div style={{ color: "#888" }}>
+          No strong opportunities found.
+        </div>
+      )}
 
       {results.map((item, i) => (
         <div
@@ -53,28 +70,54 @@ export default function Home() {
           style={{
             background: "#1a1a1a",
             padding: 15,
-            marginBottom: 15,
-            borderRadius: 8,
+            marginBottom: 20,
+            borderRadius: 10,
           }}
         >
-          <img
-            src={item.image}
-            style={{ width: "100%", marginBottom: 10 }}
-          />
+          {item.image && (
+            <img
+              src={item.image}
+              alt=""
+              style={{
+                width: "100%",
+                borderRadius: 8,
+                marginBottom: 10,
+              }}
+            />
+          )}
 
-          <div style={{ fontWeight: 600 }}>
+          <div style={{ fontWeight: 600, marginBottom: 8 }}>
             {item.title}
           </div>
 
-          <div>Live £{item.livePrice}</div>
-          <div>Avg £{item.avgSold.toFixed(0)}</div>
-
-          <div style={{ color: "#22c55e", marginTop: 5 }}>
-            Discount {(item.discount * 100).toFixed(1)}%
+          {/* Auction Stats */}
+          <div style={{ fontSize: 14, marginBottom: 6 }}>
+            ⏱ {item.daysLeft}d {item.hoursLeft}h left
           </div>
 
-          <div style={{ color: "#eab308", marginBottom: 8 }}>
-            Max Bid £{item.maxBid}
+          <div style={{ fontSize: 14 }}>
+            Current Bid: £{item.currentBid}
+          </div>
+
+          <div style={{ fontSize: 14 }}>
+            Bidders: {item.bidderCount ?? "—"}
+          </div>
+
+          <div style={{ fontSize: 14, marginBottom: 8 }}>
+            Total Bids: {item.bidCount}
+          </div>
+
+          {/* Opportunity Metrics */}
+          <div style={{ marginTop: 10 }}>
+            <div>Avg Sold: £{item.avgSold.toFixed(0)}</div>
+
+            <div style={{ color: "#22c55e", fontWeight: 600 }}>
+              Discount {(item.discount * 100).toFixed(1)}%
+            </div>
+
+            <div style={{ color: "#eab308", marginBottom: 8 }}>
+              Max Bid £{item.maxBid}
+            </div>
           </div>
 
           <a
@@ -84,13 +127,14 @@ export default function Home() {
               display: "block",
               textAlign: "center",
               background: "#333",
-              padding: 8,
-              borderRadius: 5,
+              padding: 10,
+              borderRadius: 6,
               textDecoration: "none",
               color: "white",
+              marginTop: 10,
             }}
           >
-            View
+            View Listing
           </a>
         </div>
       ))}
