@@ -7,9 +7,7 @@ function medianTopHalf(values) {
 
   values.sort((a, b) => a - b);
 
-  // remove lower 50% (cheap junk)
   const topHalf = values.slice(Math.floor(values.length / 2));
-
   const mid = Math.floor(topHalf.length / 2);
 
   return topHalf.length % 2 === 0
@@ -35,7 +33,9 @@ export async function GET(req) {
   const brand = searchParams.get("brand") || "seiko";
   const query = brand;
 
-  // SOLD ITEMS
+  // -------------------------
+  // SOLD ITEMS (baseline)
+  // -------------------------
   const sold = await search({
     q: query,
     limit: 30,
@@ -48,11 +48,9 @@ export async function GET(req) {
 
   const baseline = medianTopHalf(soldPrices);
 
-  if (!baseline) {
-    return Response.json({ results: [] });
-  }
-
+  // -------------------------
   // LIVE AUCTIONS
+  // -------------------------
   const live = await search({
     q: query,
     limit: 25,
@@ -64,57 +62,51 @@ export async function GET(req) {
   const itemIds = summaries.map((s) => s.itemId).filter(Boolean);
 
   const itemsResp = itemIds.length ? await getItems(itemIds) : { items: [] };
-  const itemsById = new Map((itemsResp.items || []).map((it) => [it.itemId, it]));
+  const itemsById = new Map(
+    (itemsResp.items || []).map((it) => [it.itemId, it])
+  );
 
-  const MIN_DISCOUNT = 0.15;   // 15%
-  const MAX_BID_FACTOR = 0.80; // 80% ceiling
-  const MIN_BASELINE = 120;    // ignore low-value brands
+  const results = summaries.map((s) => {
+    const it = itemsById.get(s.itemId) || {};
 
-  const results = summaries
-    .map((s) => {
-      const it = itemsById.get(s.itemId) || {};
+    const endDate = it.itemEndDate || s.itemEndDate;
+    const { daysLeft, hoursLeft } = endDate
+      ? timeLeftParts(endDate)
+      : { daysLeft: null, hoursLeft: null };
 
-      const endDate = it.itemEndDate || s.itemEndDate;
-      const { daysLeft, hoursLeft } = endDate
-        ? timeLeftParts(endDate)
-        : { daysLeft: null, hoursLeft: null };
+    const currentBid =
+      parseFloat(
+        it.currentBidPrice?.value ||
+        s.currentBidPrice?.value ||
+        it.price?.value ||
+        s.price?.value ||
+        0
+      );
 
-      const currentBid =
-        parseFloat(
-          it.currentBidPrice?.value ||
-          s.currentBidPrice?.value ||
-          it.price?.value ||
-          s.price?.value ||
-          0
-        );
+    const bidCount = it.bidCount ?? s.bidCount ?? 0;
+    const bidderCount = it.uniqueBidderCount ?? null;
 
-      const bidCount = it.bidCount ?? s.bidCount ?? 0;
-      const bidderCount = it.uniqueBidderCount ?? null;
+    const discount =
+      baseline && currentBid > 0 ? 1 - currentBid / baseline : null;
 
-      const discount = 1 - currentBid / baseline;
-      const maxBid = baseline * MAX_BID_FACTOR;
+    return {
+      title: s.title,
+      image: s.image?.imageUrl,
+      url: s.itemWebUrl,
+      currentBid,
+      bidCount,
+      bidderCount,
+      daysLeft,
+      hoursLeft,
+      discount,
+    };
+  });
 
-      return {
-        title: s.title,
-        image: s.image?.imageUrl,
-        url: s.itemWebUrl,
-        avgSold: baseline,
-        discount,
-        maxBid: Math.max(0, maxBid).toFixed(0),
-        currentBid,
-        bidCount,
-        bidderCount,
-        daysLeft,
-        hoursLeft,
-      };
-    })
-    .filter(
-      (x) =>
-        baseline > MIN_BASELINE &&
-        x.discount >= MIN_DISCOUNT &&
-        x.currentBid <= parseFloat(x.maxBid)
-    )
-    .sort((a, b) => b.discount - a.discount);
-
-  return Response.json({ results });
+  return Response.json({
+    brand,
+    baseline,
+    soldCount: soldPrices.length,
+    liveCount: summaries.length,
+    results,
+  });
 }
