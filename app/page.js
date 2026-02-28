@@ -8,30 +8,42 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
 
   async function scan() {
-    setLoading(true);
-    const res = await fetch(`/api/scan?brand=${brand}`);
-    const data = await res.json();
+    try {
+      setLoading(true);
 
-    const enriched = data.results.map((item) => {
-      const fairValue = estimateFairValue(item.currentBid);
-      const edgePercent = calculateEdge(item.currentBid, fairValue);
-      const maxBid = calculateMaxBid(fairValue);
-      const score = calculateScore(edgePercent, item.hoursLeft);
+      const res = await fetch(`/api/scan?brand=${brand}`);
+      const data = await res.json();
 
-      return {
-        ...item,
-        fairValue,
-        edgePercent,
-        maxBid,
-        score,
-      };
-    });
+      if (!data.results) {
+        setResults([]);
+        setLoading(false);
+        return;
+      }
 
-    // sort by score descending
-    enriched.sort((a, b) => b.score - a.score);
+      const enriched = data.results.map((item) => {
+        const fairValue = estimateFairValue(item.currentBid);
+        const edgePercent = calculateEdge(item.currentBid, fairValue);
+        const maxBid = calculateMaxBid(fairValue);
+        const score = calculateScore(edgePercent, item.hoursLeft);
 
-    setResults(enriched);
-    setLoading(false);
+        return {
+          ...item,
+          fairValue,
+          edgePercent,
+          maxBid,
+          score,
+        };
+      });
+
+      enriched.sort((a, b) => b.score - a.score);
+
+      setResults(enriched);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setResults([]);
+      setLoading(false);
+    }
   }
 
   const critical = results.filter(
@@ -85,6 +97,12 @@ export default function Home() {
           ))}
         </>
       )}
+
+      {results.length === 0 && !loading && (
+        <div className="text-zinc-500 text-sm mt-6">
+          No results yet. Run a scan.
+        </div>
+      )}
     </div>
   );
 }
@@ -100,10 +118,13 @@ function AuctionCard({ item, critical }) {
           : "border-zinc-800 bg-zinc-900"
       }`}
     >
-      <img
-        src={item.image}
-        className="rounded-lg mb-3"
-      />
+      {item.image && (
+        <img
+          src={item.image}
+          alt={item.title}
+          className="rounded-lg mb-3"
+        />
+      )}
 
       <div className="flex justify-between items-start mb-2">
         <div>
@@ -149,6 +170,7 @@ function AuctionCard({ item, critical }) {
       <a
         href={item.url}
         target="_blank"
+        rel="noopener noreferrer"
         className="block text-center bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg py-2 transition"
       >
         View Auction
@@ -160,7 +182,7 @@ function AuctionCard({ item, critical }) {
 /* ---------- Logic ---------- */
 
 function estimateFairValue(currentBid) {
-  // placeholder until sold data connected
+  // TEMPORARY until sold price data is wired
   return Math.round(currentBid * 2.5);
 }
 
@@ -174,6 +196,10 @@ function calculateMaxBid(fair) {
 }
 
 function calculateScore(edgePercent, hoursLeft) {
-  const urgencyWeight = hoursLeft < 6 ? 30 : hoursLeft < 24 ? 15 : 0;
+  const urgencyWeight =
+    hoursLeft < 6 ? 30 :
+    hoursLeft < 24 ? 15 :
+    0;
+
   return edgePercent + urgencyWeight;
 }
