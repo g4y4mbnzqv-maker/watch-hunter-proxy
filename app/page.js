@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 
 export default function Home() {
@@ -10,121 +11,169 @@ export default function Home() {
     setLoading(true);
     const res = await fetch(`/api/scan?brand=${brand}`);
     const data = await res.json();
-    setResults(data.results || []);
+
+    const enriched = data.results.map((item) => {
+      const fairValue = estimateFairValue(item.currentBid);
+      const edgePercent = calculateEdge(item.currentBid, fairValue);
+      const maxBid = calculateMaxBid(fairValue);
+      const score = calculateScore(edgePercent, item.hoursLeft);
+
+      return {
+        ...item,
+        fairValue,
+        edgePercent,
+        maxBid,
+        score,
+      };
+    });
+
+    // sort by score descending
+    enriched.sort((a, b) => b.score - a.score);
+
+    setResults(enriched);
     setLoading(false);
   }
 
+  const critical = results.filter(
+    (r) => r.hoursLeft < 6 && r.edgePercent > 30
+  );
+
+  const normal = results.filter(
+    (r) => !(r.hoursLeft < 6 && r.edgePercent > 30)
+  );
+
   return (
-    <div
-      style={{
-        padding: 20,
-        maxWidth: 500,
-        margin: "auto",
-        fontFamily: "system-ui",
-      }}
-    >
-      <h1 style={{ marginBottom: 20 }}>Watch Hunter</h1>
+    <div className="min-h-screen bg-zinc-950 text-white p-5">
 
-      <select
-        value={brand}
-        onChange={(e) => setBrand(e.target.value)}
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 15,
-          background: "#1a1a1a",
-          border: "none",
-          color: "white",
-        }}
-      >
-        <option value="seiko">Seiko</option>
-        <option value="omega">Omega</option>
-        <option value="heuer">Heuer</option>
-        <option value="citizen">Citizen</option>
-      </select>
+      <h1 className="text-2xl font-semibold mb-4 tracking-tight">
+        Watch Hunter
+      </h1>
 
-      <button
-        onClick={scan}
-        style={{
-          width: "100%",
-          padding: 12,
-          background: "#16a34a",
-          border: "none",
-          color: "white",
-          marginBottom: 20,
-          cursor: "pointer",
-        }}
-      >
-        {loading ? "Scanning..." : "Scan"}
-      </button>
+      <div className="flex gap-2 mb-6">
+        <input
+          value={brand}
+          onChange={(e) => setBrand(e.target.value)}
+          className="bg-zinc-800 rounded px-3 py-2 flex-1"
+          placeholder="Brand"
+        />
+        <button
+          onClick={scan}
+          className="bg-emerald-500 text-black px-4 rounded font-semibold"
+        >
+          {loading ? "Scanning…" : "Scan"}
+        </button>
+      </div>
 
-      {results.length === 0 && !loading && (
-        <div style={{ color: "#888" }}>
-          No strong opportunities found.
-        </div>
+      {critical.length > 0 && (
+        <>
+          <h2 className="text-sm text-red-400 mb-3 tracking-wide">
+            ENDING SOON & HIGH MARGIN
+          </h2>
+          {critical.map((item) => (
+            <AuctionCard key={item.itemId} item={item} critical />
+          ))}
+        </>
       )}
 
-      {results.map((item, i) => (
-        <div
-          key={i}
-          style={{
-            background: "#1a1a1a",
-            padding: 15,
-            marginBottom: 20,
-            borderRadius: 10,
-          }}
-        >
-          {item.image && (
-            <img
-              src={item.image}
-              alt=""
-              style={{
-                width: "100%",
-                borderRadius: 8,
-                marginBottom: 10,
-              }}
-            />
-          )}
-
-          <div style={{ fontWeight: 600, marginBottom: 8 }}>
-            {item.title}
-          </div>
-
-          <div>⏱ {item.daysLeft}d {item.hoursLeft}h left</div>
-          <div>Current Bid: £{item.currentBid}</div>
-          <div>Bidders: {item.bidderCount ?? "—"}</div>
-          <div>Total Bids: {item.bidCount}</div>
-
-          <div style={{ marginTop: 10 }}>
-            <div>Baseline Sold: £{item.avgSold.toFixed(0)}</div>
-
-            <div style={{ color: "#22c55e", fontWeight: 600 }}>
-              Discount {(item.discount * 100).toFixed(1)}%
-            </div>
-
-            <div style={{ color: "#eab308" }}>
-              Max Bid £{item.maxBid}
-            </div>
-          </div>
-
-          <a
-            href={item.url}
-            target="_blank"
-            style={{
-              display: "block",
-              textAlign: "center",
-              background: "#333",
-              padding: 10,
-              borderRadius: 6,
-              textDecoration: "none",
-              color: "white",
-              marginTop: 10,
-            }}
-          >
-            View Listing
-          </a>
-        </div>
-      ))}
+      {normal.length > 0 && (
+        <>
+          <h2 className="text-sm text-zinc-400 mt-6 mb-3 tracking-wide">
+            All Opportunities
+          </h2>
+          {normal.map((item) => (
+            <AuctionCard key={item.itemId} item={item} />
+          ))}
+        </>
+      )}
     </div>
   );
+}
+
+/* ---------- Card Component ---------- */
+
+function AuctionCard({ item, critical }) {
+  return (
+    <div
+      className={`rounded-xl p-4 mb-4 border transition ${
+        critical
+          ? "border-red-500 bg-red-950/30"
+          : "border-zinc-800 bg-zinc-900"
+      }`}
+    >
+      <img
+        src={item.image}
+        className="rounded-lg mb-3"
+      />
+
+      <div className="flex justify-between items-start mb-2">
+        <div>
+          <div className="text-2xl font-bold">
+            £{item.currentBid}
+          </div>
+          <div className="text-xs text-zinc-400">
+            {item.bidCount} bids
+          </div>
+        </div>
+
+        <div className="text-right">
+          <div
+            className={`text-2xl font-bold ${
+              item.edgePercent > 40
+                ? "text-emerald-400"
+                : item.edgePercent > 20
+                ? "text-emerald-300"
+                : "text-zinc-400"
+            }`}
+          >
+            -{item.edgePercent}%
+          </div>
+
+          <div
+            className={`text-xs ${
+              item.hoursLeft < 6
+                ? "text-red-400"
+                : item.hoursLeft < 24
+                ? "text-amber-400"
+                : "text-zinc-400"
+            }`}
+          >
+            {item.daysLeft}d {item.hoursLeft}h
+          </div>
+        </div>
+      </div>
+
+      <div className="text-xs text-zinc-400 mb-3">
+        Fair £{item.fairValue} · Max £{item.maxBid}
+      </div>
+
+      <a
+        href={item.url}
+        target="_blank"
+        className="block text-center bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-lg py-2 transition"
+      >
+        View Auction
+      </a>
+    </div>
+  );
+}
+
+/* ---------- Logic ---------- */
+
+function estimateFairValue(currentBid) {
+  // placeholder until sold data connected
+  return Math.round(currentBid * 2.5);
+}
+
+function calculateEdge(current, fair) {
+  if (!fair || fair === 0) return 0;
+  return Math.round(((fair - current) / fair) * 100);
+}
+
+function calculateMaxBid(fair) {
+  return Math.round(fair * 0.65);
+}
+
+function calculateScore(edgePercent, hoursLeft) {
+  const urgencyWeight = hoursLeft < 6 ? 30 : hoursLeft < 24 ? 15 : 0;
+  return edgePercent + urgencyWeight;
 }
