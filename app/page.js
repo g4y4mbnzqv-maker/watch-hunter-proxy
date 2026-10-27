@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
-import BrandPicker from "./components/BrandPicker";
+import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import { formatGbp, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
+import { baseModel } from "@/lib/models";
 
 
 const VIEWS = [
@@ -19,8 +20,13 @@ const VIEWS = [
 // without a scan and survives the listing ending
 const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
-  "postage", "totalCost", "bidCount", "endTime", "seller", "comps",
+  "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
 ];
+
+// Label used in place of a brand once a Top deals scan has run
+const TOP_DEALS = "Top deals";
+// Brands scanned at once by Top deals, to stay gentle on the eBay API
+const TOP_DEALS_CONCURRENCY = 3;
 
 // Opening the watchlist refreshes it if the last refresh is older than this
 const WATCHLIST_STALE_MS = 60_000;
@@ -40,7 +46,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
+  // Resale values typed for one listing, by item ID
   const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {});
+  // Resale values typed for a model, by base reference such as SRPD55
+  const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
   const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
   const [mode, setMode] = useState("scan");
@@ -48,9 +57,25 @@ export default function Home() {
   const [refreshError, setRefreshError] = useState(null);
   const [refreshedAt, setRefreshedAt] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [topProgress, setTopProgress] = useState(null);
+  const [topFailures, setTopFailures] = useState([]);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
   const now = useNow(30_000);
+
+  async function fetchBrand(query) {
+    const params = new URLSearchParams({ brand: query });
+    if (includeJunk) params.set("includeJunk", "1");
+
+    const res = await fetch(`/api/scan?${params}`);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.message || `Scan failed (${res.status})`);
+    }
+
+    return data.results;
+  }
 
   async function scan(searchBrand = brand) {
     const query = searchBrand.trim();
@@ -59,19 +84,10 @@ export default function Home() {
     setBrand(query);
     setLoading(true);
     setError(null);
+    setTopFailures([]);
 
     try {
-      const params = new URLSearchParams({ brand: query });
-      if (includeJunk) params.set("includeJunk", "1");
-
-      const res = await fetch(`/api/scan?${params}`);
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.message || `Scan failed (${res.status})`);
-      }
-
-      setResults(data.results);
+      setResults(await fetchBrand(query));
       setScannedBrand(query);
     } catch (err) {
       console.error(err);
@@ -80,6 +96,55 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Scans every popular brand and combines the results, best profit first
+  async function scanTopDeals() {
+    setLoading(true);
+    setError(null);
+    setTopFailures([]);
+    setTopProgress({ done: 0, total: POPULAR.length });
+
+    const combined = new Map();
+    const failures = [];
+    let done = 0;
+
+    for (let i = 0; i < POPULAR.length; i += TOP_DEALS_CONCURRENCY) {
+      const batch = POPULAR.slice(i, i + TOP_DEALS_CONCURRENCY);
+
+      await Promise.all(
+        batch.map(async (name) => {
+          try {
+            for (const item of await fetchBrand(name)) {
+              // A listing can match two brands, such as Seiko and Grand Seiko
+              if (!combined.has(item.itemId)) {
+                combined.set(item.itemId, { ...item, brand: name });
+              }
+            }
+          } catch (err) {
+            console.error(err);
+            failures.push({ name, message: err.message });
+          } finally {
+            done += 1;
+            setTopProgress({ done, total: POPULAR.length });
+          }
+        })
+      );
+    }
+
+    if (failures.length === POPULAR.length) {
+      setError(failures[0].message);
+      setResults([]);
+    } else {
+      setResults([...combined.values()]);
+      setScannedBrand(TOP_DEALS);
+      setTopFailures(failures.map((failure) => failure.name));
+      setView("deals");
+      setSort("profit");
+    }
+
+    setTopProgress(null);
+    setLoading(false);
   }
 
   function toggleSave(item) {
@@ -154,13 +219,38 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  function setResale(itemId, value) {
-    setOverrides((current) => {
+  // A value typed on a card with a model reference applies to every listing
+  // of that model; without a reference it applies to that listing only
+  function setResale(item, value) {
+    const update = (key) => (current) => {
       const next = { ...current };
-      if (value === undefined) delete next[itemId];
-      else next[itemId] = value;
+      if (value === undefined) delete next[key];
+      else next[key] = value;
       return next;
-    });
+    };
+
+    if (item.modelRef) {
+      setModelValues(update(baseModel(item.modelRef)));
+      // Drop any older value for this listing so the model value shows
+      setOverrides((current) => {
+        const next = { ...current };
+        delete next[item.itemId];
+        return next;
+      });
+    } else {
+      setOverrides(update(item.itemId));
+    }
+  }
+
+  function resaleOverride(item) {
+    if (overrides[item.itemId] !== undefined) {
+      return { value: overrides[item.itemId], source: "listing" };
+    }
+    const model = item.modelRef && modelValues[baseModel(item.modelRef)];
+    if (model !== undefined && model !== null && model !== "") {
+      return { value: model, source: "model" };
+    }
+    return undefined;
   }
 
   const live = useMemo(() => {
@@ -168,11 +258,13 @@ export default function Home() {
 
     return results
       .map((item) => ({
-        ...analyse(item, merged, overrides[item.itemId]),
+        ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
       }))
       .filter((item) => hoursLeft(item.endTime, now) > 0);
-  }, [results, settings, overrides, now]);
+    // resaleOverride reads overrides and modelValues
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, settings, overrides, modelValues, now]);
 
   const riskyCount = live.filter((item) => item.sellerCheck.level === "risky").length;
 
@@ -213,7 +305,7 @@ export default function Home() {
 
     return Object.values(watchlist)
       .map((item) => ({
-        ...analyse(item, merged, overrides[item.itemId]),
+        ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
         ended: item.ended || hoursLeft(item.endTime, now) <= 0,
       }))
@@ -225,7 +317,8 @@ export default function Home() {
           ? new Date(b.endTime) - new Date(a.endTime)
           : new Date(a.endTime) - new Date(b.endTime)
       );
-  }, [watchlist, settings, overrides, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchlist, settings, overrides, modelValues, now]);
 
   const endedCount = watched.filter((item) => item.ended).length;
 
@@ -328,7 +421,18 @@ export default function Home() {
                 disabled={loading}
                 className="rounded-xl bg-emerald-500 px-6 py-3 font-medium text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-60"
               >
-                {loading ? "Scanning…" : "Find deals"}
+                {loading && !topProgress ? "Scanning…" : "Find deals"}
+              </button>
+              <button
+                type="button"
+                onClick={scanTopDeals}
+                disabled={loading}
+                title={`Scan ${POPULAR.join(", ")} and show the best deals across all of them`}
+                className="rounded-xl px-5 py-3 font-medium text-emerald-400 ring-1 ring-emerald-500/60 transition hover:bg-emerald-500/10 disabled:opacity-60"
+              >
+                {topProgress
+                  ? `Scanning ${topProgress.done}/${topProgress.total}…`
+                  : "Top deals"}
               </button>
             </form>
 
@@ -372,7 +476,20 @@ export default function Home() {
             </div>
           )}
 
+          {loading && topProgress && (
+            <p className="mb-4 text-sm text-zinc-400">
+              Checking {POPULAR.length} popular brands for the best deals.
+              This takes a little longer than a single brand.
+            </p>
+          )}
+
           {loading && <LoadingGrid />}
+
+          {!loading && topFailures.length > 0 && (
+            <div className="mb-6 rounded-2xl bg-amber-950/30 p-4 text-sm text-amber-200 ring-1 ring-amber-500/30">
+              Couldn't scan {topFailures.join(", ")}. The deals below are from the other brands.
+            </div>
+          )}
 
           {!loading && scannedBrand && !error && (
             <>
