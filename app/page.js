@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
+import BrandPicker from "./components/BrandPicker";
 import { formatGbp, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
 
-const QUICK_BRANDS = ["Seiko", "Citizen", "Orient", "Tissot", "Hamilton", "Casio", "Omega"];
 
 const VIEWS = [
   { key: "deals", label: "Deals" },
@@ -332,24 +332,20 @@ export default function Home() {
               </button>
             </form>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              {QUICK_BRANDS.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => scan(name)}
-                  className={`rounded-full px-3 py-1 text-xs ring-1 transition ${
-                    scannedBrand?.toLowerCase() === name.toLowerCase()
-                      ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-                      : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
-                  }`}
-                >
-                  {name}
-                </button>
-              ))}
+            <div className="mt-4">
+              <BrandPicker
+                selected={scannedBrand}
+                disabled={loading}
+                onPick={scan}
+              />
+            </div>
 
-              <label className="ml-auto flex items-center gap-2 text-xs text-zinc-400">
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-zinc-800 pt-4">
+              <span className="flex items-center gap-1.5 text-xs text-zinc-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                Watches located in the UK
+              </span>
+              <label className="flex items-center gap-2 text-xs text-zinc-400">
                 <input
                   type="checkbox"
                   checked={includeJunk}
@@ -614,7 +610,7 @@ function Intro() {
   const steps = [
     {
       title: "Scan a brand",
-      body: "Pulls live eBay UK auctions, ending soonest first, with parts and accessories filtered out.",
+      body: "Pulls live auctions for watches located in the UK, ending soonest first, with parts and accessories filtered out.",
     },
     {
       title: "Estimate resale",
