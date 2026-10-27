@@ -20,7 +20,7 @@ export async function GET(req) {
 
     const results = auctions.map((item) => ({
       ...item,
-      comps: item.modelRef ? comps[item.modelRef] ?? null : null,
+      comps: comps[item.itemId] ?? null,
     }));
 
     return Response.json({

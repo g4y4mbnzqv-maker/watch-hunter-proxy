@@ -143,13 +143,7 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
           <Figure
             label="Resale"
             value={formatGbp(item.resale)}
-            hint={
-              item.resaleSource === "manual"
-                ? "your value"
-                : item.comps
-                ? `${item.comps.count} listings`
-                : "no estimate"
-            }
+            hint={resaleHint(item)}
           />
           <Figure
             label={ended ? "Profit" : "Profit now"}
@@ -337,9 +331,22 @@ function PriceChecks({ item }) {
   );
 }
 
+const CONDITION_NAMES = { NEW: "new", USED: "pre-owned" };
+
+function resaleHint(item) {
+  if (item.resaleSource === "listing") return "your value";
+  if (item.resaleSource === "model") return `your ${baseModel(item.modelRef)} value`;
+  if (!item.comps) return "no estimate";
+
+  const condition = CONDITION_NAMES[item.comps.condition];
+  return `${item.comps.count} ${condition ? `${condition} ` : ""}listings`;
+}
+
 function ResaleEditor({ item, onSetResale }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState("");
+  const custom = item.resaleSource === "listing" || item.resaleSource === "model";
+  const model = item.modelRef ? baseModel(item.modelRef) : null;
 
   if (!editing) {
     return (
@@ -351,55 +358,62 @@ function ResaleEditor({ item, onSetResale }) {
         }}
         className="text-left text-xs text-zinc-400 underline decoration-zinc-700 underline-offset-4 hover:text-zinc-200"
       >
-        {item.resaleSource === "manual"
-          ? "Change your resale value"
+        {custom
+          ? `Change your resale value${model ? ` for ${model}` : ""}`
           : item.resale === null
-          ? "Add your own resale value"
-          : "Know better? Set your own resale value"}
+          ? `Add your own resale value${model ? ` for ${model}` : ""}`
+          : `Know better? Set your own value${model ? ` for ${model}` : ""}`}
       </button>
     );
   }
 
   return (
     <form
-      className="flex gap-2"
+      className="space-y-1.5"
       onSubmit={(e) => {
         e.preventDefault();
         const number = parseFloat(value);
-        onSetResale(item.itemId, number > 0 ? number : undefined);
+        onSetResale(item, number > 0 ? number : undefined);
         setEditing(false);
       }}
     >
-      <div className="relative flex-1">
-        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
-          £
-        </span>
-        <input
-          autoFocus
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          className="w-full rounded-lg bg-zinc-800 py-1.5 pl-7 pr-2 text-sm text-zinc-100 outline-none ring-1 ring-zinc-700 focus:ring-emerald-500"
-          placeholder="Resale value"
-        />
-      </div>
-      <button
-        type="submit"
-        className="rounded-lg bg-emerald-500 px-3 text-sm font-medium text-emerald-950"
-      >
-        Save
-      </button>
-      {item.resaleSource === "manual" && (
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+            £
+          </span>
+          <input
+            autoFocus
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            className="w-full rounded-lg bg-zinc-800 py-1.5 pl-7 pr-2 text-sm text-zinc-100 outline-none ring-1 ring-zinc-700 focus:ring-emerald-500"
+            placeholder="Resale value"
+          />
+        </div>
         <button
-          type="button"
-          onClick={() => {
-            onSetResale(item.itemId, undefined);
-            setEditing(false);
-          }}
-          className="rounded-lg px-2 text-sm text-zinc-400 hover:text-zinc-200"
+          type="submit"
+          className="rounded-lg bg-emerald-500 px-3 text-sm font-medium text-emerald-950"
         >
-          Reset
+          Save
         </button>
+        {custom && (
+          <button
+            type="button"
+            onClick={() => {
+              onSetResale(item, undefined);
+              setEditing(false);
+            }}
+            className="rounded-lg px-2 text-sm text-zinc-400 hover:text-zinc-200"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+      {model && (
+        <p className="text-[11px] text-zinc-500">
+          Used for every {model} listing from now on.
+        </p>
       )}
     </form>
   );

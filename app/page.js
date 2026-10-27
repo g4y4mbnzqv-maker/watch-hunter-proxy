@@ -7,6 +7,7 @@ import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import { formatGbp, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
+import { baseModel } from "@/lib/models";
 
 
 const VIEWS = [
@@ -45,7 +46,10 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
+  // Resale values typed for one listing, by item ID
   const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {});
+  // Resale values typed for a model, by base reference such as SRPD55
+  const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
   const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
   const [mode, setMode] = useState("scan");
@@ -215,13 +219,38 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  function setResale(itemId, value) {
-    setOverrides((current) => {
+  // A value typed on a card with a model reference applies to every listing
+  // of that model; without a reference it applies to that listing only
+  function setResale(item, value) {
+    const update = (key) => (current) => {
       const next = { ...current };
-      if (value === undefined) delete next[itemId];
-      else next[itemId] = value;
+      if (value === undefined) delete next[key];
+      else next[key] = value;
       return next;
-    });
+    };
+
+    if (item.modelRef) {
+      setModelValues(update(baseModel(item.modelRef)));
+      // Drop any older value for this listing so the model value shows
+      setOverrides((current) => {
+        const next = { ...current };
+        delete next[item.itemId];
+        return next;
+      });
+    } else {
+      setOverrides(update(item.itemId));
+    }
+  }
+
+  function resaleOverride(item) {
+    if (overrides[item.itemId] !== undefined) {
+      return { value: overrides[item.itemId], source: "listing" };
+    }
+    const model = item.modelRef && modelValues[baseModel(item.modelRef)];
+    if (model !== undefined && model !== null && model !== "") {
+      return { value: model, source: "model" };
+    }
+    return undefined;
   }
 
   const live = useMemo(() => {
@@ -229,11 +258,13 @@ export default function Home() {
 
     return results
       .map((item) => ({
-        ...analyse(item, merged, overrides[item.itemId]),
+        ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
       }))
       .filter((item) => hoursLeft(item.endTime, now) > 0);
-  }, [results, settings, overrides, now]);
+    // resaleOverride reads overrides and modelValues
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [results, settings, overrides, modelValues, now]);
 
   const riskyCount = live.filter((item) => item.sellerCheck.level === "risky").length;
 
@@ -274,7 +305,7 @@ export default function Home() {
 
     return Object.values(watchlist)
       .map((item) => ({
-        ...analyse(item, merged, overrides[item.itemId]),
+        ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
         ended: item.ended || hoursLeft(item.endTime, now) <= 0,
       }))
@@ -286,7 +317,8 @@ export default function Home() {
           ? new Date(b.endTime) - new Date(a.endTime)
           : new Date(a.endTime) - new Date(b.endTime)
       );
-  }, [watchlist, settings, overrides, now]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchlist, settings, overrides, modelValues, now]);
 
   const endedCount = watched.filter((item) => item.ended).length;
 
