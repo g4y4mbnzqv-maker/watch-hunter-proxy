@@ -1,94 +1,33 @@
+import { searchAuctions, EbayError } from "@/lib/ebay";
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const brand = searchParams.get("brand") || "seiko";
+  const brand = (searchParams.get("brand") || "seiko").trim();
+  const includeJunk = searchParams.get("includeJunk") === "1";
 
-  const ebayUrl = `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(
-    brand
-  )}&LH_Auction=1&_sop=1`;
+  if (!brand) {
+    return Response.json(
+      { error: true, message: "Enter a brand to search" },
+      { status: 400 }
+    );
+  }
 
   try {
-    const res = await fetch(ebayUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-      },
-    });
-
-    const html = await res.text();
-
-    const items = [];
-
-    const blocks = html.split('class="s-item"');
-
-    for (let block of blocks.slice(1, 25)) {
-      const titleMatch = block.match(
-        /class="s-item__title">([^<]+)</
-      );
-      const priceMatch = block.match(
-        /class="s-item__price">£?([\d,.]+)</
-      );
-      const bidsMatch = block.match(
-        /class="s-item__bids">([^<]+)</
-      );
-      const timeMatch = block.match(
-        /class="s-item__time-left">([^<]+)</
-      );
-      const linkMatch = block.match(
-        /class="s-item__link" href="([^"]+)"/
-      );
-      const imageMatch = block.match(
-        /class="s-item__image-img"[^>]+src="([^"]+)"/
-      );
-
-      if (!titleMatch || !priceMatch) continue;
-
-      const currentBid = parseFloat(
-        priceMatch[1].replace(/,/g, "")
-      );
-
-      const bidCount = bidsMatch
-        ? parseInt(bidsMatch[1].replace(/[^\d]/g, "")) || 0
-        : 0;
-
-      const { daysLeft, hoursLeft } = parseTimeLeft(
-        timeMatch ? timeMatch[1] : ""
-      );
-
-      items.push({
-        title: titleMatch[1],
-        currentBid,
-        bidCount,
-        daysLeft,
-        hoursLeft,
-        url: linkMatch ? linkMatch[1] : "",
-        image: imageMatch ? imageMatch[1] : "",
-      });
-    }
+    const results = await searchAuctions(brand, { includeJunk });
 
     return Response.json({
       brand,
-      count: items.length,
-      results: items,
+      count: results.length,
+      results,
     });
   } catch (err) {
-    return Response.json({
-      error: true,
-      message: err.message,
-    });
+    console.error(err);
+
+    return Response.json(
+      { error: true, message: err.message },
+      { status: err instanceof EbayError ? err.status : 500 }
+    );
   }
-}
-
-function parseTimeLeft(text) {
-  let days = 0;
-  let hours = 0;
-
-  const dayMatch = text.match(/(\d+)d/);
-  const hourMatch = text.match(/(\d+)h/);
-
-  if (dayMatch) days = parseInt(dayMatch[1]);
-  if (hourMatch) hours = parseInt(hourMatch[1]);
-
-  return { daysLeft: days, hoursLeft: hours };
 }

@@ -4,26 +4,30 @@ import { useState } from "react";
 
 export default function Home() {
   const [brand, setBrand] = useState("seiko");
+  const [includeJunk, setIncludeJunk] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   async function scan() {
-    try {
-      setLoading(true);
+    setLoading(true);
+    setError(null);
 
-      const res = await fetch(`/api/scan?brand=${brand}`);
+    try {
+      const params = new URLSearchParams({ brand });
+      if (includeJunk) params.set("includeJunk", "1");
+
+      const res = await fetch(`/api/scan?${params}`);
       const data = await res.json();
 
-      if (!data.results) {
-        setResults([]);
-        setLoading(false);
-        return;
+      if (!res.ok || data.error) {
+        throw new Error(data.message || `Scan failed (${res.status})`);
       }
 
       const enriched = data.results.map((item) => {
         const fairValue = estimateFairValue(item.currentBid);
-        const edgePercent = calculateEdge(item.currentBid, fairValue);
-        const maxBid = calculateMaxBid(fairValue);
+        const edgePercent = calculateEdge(item.totalCost, fairValue);
+        const maxBid = calculateMaxBid(fairValue, item.postage);
         const score = calculateScore(edgePercent, item.hoursLeft);
 
         return {
@@ -38,30 +42,33 @@ export default function Home() {
       enriched.sort((a, b) => b.score - a.score);
 
       setResults(enriched);
-      setLoading(false);
     } catch (err) {
       console.error(err);
+      setError(err.message);
       setResults([]);
+    } finally {
       setLoading(false);
     }
   }
 
-  const critical = results.filter(
-    (r) => r.hoursLeft < 6 && r.edgePercent > 30
-  );
-
-  const normal = results.filter(
-    (r) => !(r.hoursLeft < 6 && r.edgePercent > 30)
-  );
+  const isCritical = (r) => r.hoursLeft < 6 && r.edgePercent > 30;
+  const critical = results.filter(isCritical);
+  const normal = results.filter((r) => !isCritical(r));
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-5">
+    <div className="min-h-screen bg-zinc-950 text-white p-5 max-w-2xl mx-auto">
 
       <h1 className="text-2xl font-semibold mb-4 tracking-tight">
         Watch Hunter
       </h1>
 
-      <div className="flex gap-2 mb-6">
+      <form
+        className="flex gap-2 mb-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          scan();
+        }}
+      >
         <input
           value={brand}
           onChange={(e) => setBrand(e.target.value)}
@@ -69,12 +76,28 @@ export default function Home() {
           placeholder="Brand"
         />
         <button
-          onClick={scan}
-          className="bg-emerald-500 text-black px-4 rounded font-semibold"
+          type="submit"
+          disabled={loading}
+          className="bg-emerald-500 disabled:opacity-60 text-black px-4 rounded font-semibold"
         >
           {loading ? "Scanning…" : "Scan"}
         </button>
-      </div>
+      </form>
+
+      <label className="flex items-center gap-2 text-sm text-zinc-400 mb-6">
+        <input
+          type="checkbox"
+          checked={includeJunk}
+          onChange={(e) => setIncludeJunk(e.target.checked)}
+        />
+        Include parts, repairs and accessories
+      </label>
+
+      {error && (
+        <div className="rounded-lg border border-red-500 bg-red-950/30 text-red-300 text-sm p-3 mb-6">
+          {error}
+        </div>
+      )}
 
       {critical.length > 0 && (
         <>
@@ -98,7 +121,7 @@ export default function Home() {
         </>
       )}
 
-      {results.length === 0 && !loading && (
+      {results.length === 0 && !loading && !error && (
         <div className="text-zinc-500 text-sm mt-6">
           No results yet. Run a scan.
         </div>
@@ -122,17 +145,27 @@ function AuctionCard({ item, critical }) {
         <img
           src={item.image}
           alt={item.title}
-          className="rounded-lg mb-3"
+          className="rounded-lg mb-3 w-full"
         />
       )}
+
+      <div className="text-sm text-zinc-300 mb-3">{item.title}</div>
 
       <div className="flex justify-between items-start mb-2">
         <div>
           <div className="text-2xl font-bold">
-            £{item.currentBid}
+            {formatGbp(item.totalCost)}
           </div>
           <div className="text-xs text-zinc-400">
-            {item.bidCount} bids
+            {formatGbp(item.currentBid)} bid ·{" "}
+            {item.postage === null
+              ? "postage unknown"
+              : item.postage === 0
+              ? "free postage"
+              : `${formatGbp(item.postage)} postage`}
+          </div>
+          <div className="text-xs text-zinc-400">
+            {item.bidCount} {item.bidCount === 1 ? "bid" : "bids"}
           </div>
         </div>
 
@@ -158,13 +191,13 @@ function AuctionCard({ item, critical }) {
                 : "text-zinc-400"
             }`}
           >
-            {item.daysLeft}d {item.hoursLeft}h
+            {formatTimeLeft(item.hoursLeft)}
           </div>
         </div>
       </div>
 
       <div className="text-xs text-zinc-400 mb-3">
-        Fair £{item.fairValue} · Max £{item.maxBid}
+        Fair {formatGbp(item.fairValue)} · Max bid {formatGbp(item.maxBid)}
       </div>
 
       <a
@@ -179,6 +212,30 @@ function AuctionCard({ item, critical }) {
   );
 }
 
+/* ---------- Formatting ---------- */
+
+const gbp = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+});
+
+function formatGbp(value) {
+  return gbp.format(value);
+}
+
+function formatTimeLeft(hoursLeft) {
+  const totalMinutes = Math.floor(hoursLeft * 60);
+  if (totalMinutes <= 0) return "Ended";
+
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 /* ---------- Logic ---------- */
 
 function estimateFairValue(currentBid) {
@@ -186,13 +243,14 @@ function estimateFairValue(currentBid) {
   return Math.round(currentBid * 2.5);
 }
 
-function calculateEdge(current, fair) {
+function calculateEdge(totalCost, fair) {
   if (!fair || fair === 0) return 0;
-  return Math.round(((fair - current) / fair) * 100);
+  return Math.round(((fair - totalCost) / fair) * 100);
 }
 
-function calculateMaxBid(fair) {
-  return Math.round(fair * 0.65);
+function calculateMaxBid(fair, postage) {
+  // Spend no more than 65% of fair value including postage
+  return Math.max(Math.round(fair * 0.65 - (postage ?? 0)), 0);
 }
 
 function calculateScore(edgePercent, hoursLeft) {

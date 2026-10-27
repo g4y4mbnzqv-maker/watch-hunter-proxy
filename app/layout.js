@@ -1,16 +1,14 @@
+import "./globals.css";
+
+export const metadata = {
+  title: "Watch Hunter",
+  description: "Find underpriced watch auctions on eBay UK",
+};
+
 export default function RootLayout({ children }) {
   return (
-    <html>
-      <body
-        style={{
-          margin: 0,
-          background: "#0f0f0f",
-          color: "#fff",
-          fontFamily: "system-ui",
-        }}
-      >
-        {children}
-      </body>
+    <html lang="en-GB">
+      <body className="m-0 bg-zinc-950 text-white font-sans">{children}</body>
     </html>
   );
 }
