@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
+import { baseModel } from "@/lib/models";
 
 const STATUS_STYLES = {
   deal: {
@@ -36,11 +37,14 @@ const SELLER_STYLES = {
   risky: { dot: "bg-rose-500", text: "text-rose-300" },
 };
 
-export default function AuctionCard({ item, now, onSetResale }) {
+export default function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
   const style = STATUS_STYLES[item.status];
   const hours = hoursLeft(item.endTime, now);
-  const timeClass =
-    hours < 1
+  // eBay stops returning a listing once it has ended
+  const ended = item.ended || hours <= 0;
+  const timeClass = ended
+    ? "bg-zinc-700 text-zinc-200"
+    : hours < 1
       ? "bg-rose-500 text-white"
       : hours < 6
       ? "bg-rose-500/90 text-white"
@@ -50,7 +54,9 @@ export default function AuctionCard({ item, now, onSetResale }) {
 
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-2xl bg-zinc-900 ring-1 ${style.ring}`}
+      className={`flex flex-col overflow-hidden rounded-2xl bg-zinc-900 ring-1 ${
+        ended ? "ring-zinc-800 opacity-60" : style.ring
+      }`}
     >
       <div className="relative aspect-[16/10] bg-zinc-800 sm:aspect-[4/3]">
         {item.image ? (
@@ -69,13 +75,30 @@ export default function AuctionCard({ item, now, onSetResale }) {
         <span
           className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums ${timeClass}`}
         >
-          {formatTimeLeft(item.endTime, now)}
+          {ended ? "Ended" : formatTimeLeft(item.endTime, now)}
         </span>
-        <span
-          className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium ${style.badge}`}
+        {!ended && (
+          <span
+            className={`absolute right-3 top-3 rounded-full px-2.5 py-1 text-xs font-medium ${style.badge}`}
+          >
+            {style.label}
+          </span>
+        )}
+
+        <button
+          type="button"
+          onClick={() => onToggleSave(item)}
+          aria-pressed={saved}
+          aria-label={saved ? "Remove from watchlist" : "Save to watchlist"}
+          title={saved ? "Remove from watchlist" : "Save to watchlist"}
+          className={`absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full ring-1 backdrop-blur transition ${
+            saved
+              ? "bg-emerald-500 text-emerald-950 ring-emerald-400"
+              : "bg-zinc-950/70 text-zinc-100 ring-zinc-700 hover:bg-zinc-900"
+          }`}
         >
-          {style.label}
-        </span>
+          <BookmarkIcon filled={saved} />
+        </button>
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">
@@ -102,7 +125,7 @@ export default function AuctionCard({ item, now, onSetResale }) {
 
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Figure
-            label="Cost now"
+            label={ended ? "Last seen" : "Cost now"}
             value={formatGbp(item.totalCost)}
             hint={
               item.postage === null
@@ -124,7 +147,7 @@ export default function AuctionCard({ item, now, onSetResale }) {
             }
           />
           <Figure
-            label="Profit now"
+            label={ended ? "Profit" : "Profit now"}
             value={formatGbp(item.profit)}
             valueClass={style.profit}
             // Early bids make huge returns look real, so cap the figure
@@ -132,9 +155,17 @@ export default function AuctionCard({ item, now, onSetResale }) {
           />
         </dl>
 
-        {item.maxBid !== null && <BidHeadroom item={item} />}
-
-        <ResaleEditor item={item} onSetResale={onSetResale} />
+        {ended ? (
+          <p className="text-xs text-zinc-500">
+            This auction has ended. Figures use the last bid Watch Hunter saw.
+          </p>
+        ) : (
+          <>
+            {item.maxBid !== null && <BidHeadroom item={item} />}
+            <ResaleEditor item={item} onSetResale={onSetResale} />
+            <PriceChecks item={item} />
+          </>
+        )}
 
         <a
           href={item.url}
@@ -146,6 +177,22 @@ export default function AuctionCard({ item, now, onSetResale }) {
         </a>
       </div>
     </article>
+  );
+}
+
+function BookmarkIcon({ filled }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 3h12v18l-6-4.5L6 21z" />
+    </svg>
   );
 }
 
@@ -230,6 +277,57 @@ function BidHeadroom({ item }) {
           style={{ width: `${used}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+// Words that say nothing about which watch it is
+const FILLER_WORDS = /^(mens|men's|ladies|womens|women's|gents|vintage|rare|watch|wristwatch|automatic|quartz|new|used|boxed|genuine|original|stunning|superb|lovely|nice|great|wow)$/i;
+
+// What to search other sites for: the model reference when there is one,
+// otherwise the first few meaningful words of the title
+function searchQuery(item) {
+  if (item.modelRef) return baseModel(item.modelRef);
+
+  return item.title
+    .replace(/[^\p{L}\p{N}&' -]/gu, " ")
+    .split(/\s+/)
+    // Single letters are usually leftovers like the L and K of "L@@K"
+    .filter((word) => word && !FILLER_WORDS.test(word) && (word.length > 1 || /\d/.test(word)))
+    .slice(0, 4)
+    .join(" ");
+}
+
+function PriceChecks({ item }) {
+  const query = searchQuery(item);
+  if (!query) return null;
+
+  const sites = [
+    {
+      name: "Chrono24",
+      url: `https://www.chrono24.co.uk/search/index.htm?${new URLSearchParams({ query, dosearch: "true" })}`,
+    },
+    {
+      name: "Vinted",
+      url: `https://www.vinted.co.uk/catalog?${new URLSearchParams({ search_text: query })}`,
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-zinc-500">Check prices:</span>
+      {sites.map((site) => (
+        <a
+          key={site.name}
+          href={site.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Search ${site.name} for ${query}`}
+          className="rounded-full px-2.5 py-1 text-zinc-300 ring-1 ring-zinc-700 transition hover:text-zinc-100 hover:ring-zinc-500"
+        >
+          {site.name} ↗
+        </a>
+      ))}
     </div>
   );
 }
