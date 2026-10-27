@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
+import { baseModel } from "@/lib/models";
 
 const STATUS_STYLES = {
   deal: {
@@ -162,6 +163,7 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
           <>
             {item.maxBid !== null && <BidHeadroom item={item} />}
             <ResaleEditor item={item} onSetResale={onSetResale} />
+            <PriceChecks item={item} />
           </>
         )}
 
@@ -275,6 +277,57 @@ function BidHeadroom({ item }) {
           style={{ width: `${used}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+// Words that say nothing about which watch it is
+const FILLER_WORDS = /^(mens|men's|ladies|womens|women's|gents|vintage|rare|watch|wristwatch|automatic|quartz|new|used|boxed|genuine|original|stunning|superb|lovely|nice|great|wow)$/i;
+
+// What to search other sites for: the model reference when there is one,
+// otherwise the first few meaningful words of the title
+function searchQuery(item) {
+  if (item.modelRef) return baseModel(item.modelRef);
+
+  return item.title
+    .replace(/[^\p{L}\p{N}&' -]/gu, " ")
+    .split(/\s+/)
+    // Single letters are usually leftovers like the L and K of "L@@K"
+    .filter((word) => word && !FILLER_WORDS.test(word) && (word.length > 1 || /\d/.test(word)))
+    .slice(0, 4)
+    .join(" ");
+}
+
+function PriceChecks({ item }) {
+  const query = searchQuery(item);
+  if (!query) return null;
+
+  const sites = [
+    {
+      name: "Chrono24",
+      url: `https://www.chrono24.co.uk/search/index.htm?${new URLSearchParams({ query, dosearch: "true" })}`,
+    },
+    {
+      name: "Vinted",
+      url: `https://www.vinted.co.uk/catalog?${new URLSearchParams({ search_text: query })}`,
+    },
+  ];
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-zinc-500">Check prices:</span>
+      {sites.map((site) => (
+        <a
+          key={site.name}
+          href={site.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Search ${site.name} for ${query}`}
+          className="rounded-full px-2.5 py-1 text-zinc-300 ring-1 ring-zinc-700 transition hover:text-zinc-100 hover:ring-zinc-500"
+        >
+          {site.name} ↗
+        </a>
+      ))}
     </div>
   );
 }
