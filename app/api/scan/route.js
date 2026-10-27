@@ -1,4 +1,4 @@
-import { searchAuctions, EbayError } from "@/lib/ebay";
+import { searchAuctions, getComparables, EbayError } from "@/lib/ebay";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,13 @@ export async function GET(req) {
   }
 
   try {
-    const results = await searchAuctions(brand, { includeJunk });
+    const auctions = await searchAuctions(brand, { includeJunk });
+    const comps = await getComparables(brand, auctions);
+
+    const results = auctions.map((item) => ({
+      ...item,
+      comps: item.modelRef ? comps[item.modelRef] ?? null : null,
+    }));
 
     return Response.json({
       brand,

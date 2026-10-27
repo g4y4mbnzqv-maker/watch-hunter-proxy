@@ -2,7 +2,12 @@
 module.exports = {
   content: ["./app/**/*.{js,jsx}"],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ["Roboto", "system-ui", "sans-serif"],
+        mono: ["Roboto Mono", "ui-monospace", "monospace"],
+      },
+    },
   },
   plugins: [],
 };
