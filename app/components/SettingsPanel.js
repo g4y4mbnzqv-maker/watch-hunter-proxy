@@ -35,11 +35,25 @@ const FIELDS = [
   },
 ];
 
+const SELLER_FIELDS = [
+  {
+    key: "sellerMinFeedback",
+    label: "Minimum seller feedback",
+    help: "Sellers with fewer feedback ratings get a caution flag. Under 10 is always risky.",
+  },
+  {
+    key: "sellerMinPositive",
+    label: "Minimum positive feedback",
+    suffix: "%",
+    help: "Sellers below this get a caution flag. Under 95% is always risky.",
+  },
+];
+
 export default function SettingsPanel({ settings, onChange }) {
   return (
     <section className="rounded-2xl bg-zinc-900 p-5 ring-1 ring-zinc-800">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-zinc-100">Profit settings</h2>
+        <h2 className="text-sm font-medium text-zinc-100">Settings</h2>
         <button
           type="button"
           onClick={() => onChange(DEFAULT_SETTINGS)}
@@ -49,45 +63,56 @@ export default function SettingsPanel({ settings, onChange }) {
         </button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        {FIELDS.map((field) => (
-          <label key={field.key} className="block">
-            <span className="text-xs font-medium text-zinc-300">
-              {field.label}
-            </span>
-            <div className="relative mt-1.5">
-              {field.prefix && (
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
-                  {field.prefix}
-                </span>
-              )}
-              <input
-                type="number"
-                min="0"
-                step="any"
-                value={settings[field.key]}
-                onChange={(e) =>
-                  onChange({
-                    ...settings,
-                    [field.key]: Math.max(parseFloat(e.target.value) || 0, 0),
-                  })
-                }
-                className={`w-full rounded-lg bg-zinc-800 py-2 text-sm text-zinc-100 outline-none ring-1 ring-zinc-700 focus:ring-emerald-500 ${
-                  field.prefix ? "pl-7 pr-3" : "pl-3 pr-8"
-                }`}
-              />
-              {field.suffix && (
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
-                  {field.suffix}
-                </span>
-              )}
-            </div>
-            <span className="mt-1.5 block text-[11px] leading-snug text-zinc-500">
-              {field.help}
-            </span>
-          </label>
-        ))}
-      </div>
+      <FieldGrid fields={FIELDS} settings={settings} onChange={onChange} />
+
+      <h3 className="mb-4 mt-6 text-sm font-medium text-zinc-100">
+        Seller checks
+      </h3>
+      <FieldGrid fields={SELLER_FIELDS} settings={settings} onChange={onChange} />
     </section>
+  );
+}
+
+function FieldGrid({ fields, settings, onChange }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {fields.map((field) => (
+        <label key={field.key} className="block">
+          <span className="text-xs font-medium text-zinc-300">
+            {field.label}
+          </span>
+          <div className="relative mt-1.5">
+            {field.prefix && (
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+                {field.prefix}
+              </span>
+            )}
+            <input
+              type="number"
+              min="0"
+              step="any"
+              value={settings[field.key]}
+              onChange={(e) =>
+                onChange({
+                  ...settings,
+                  [field.key]: Math.max(parseFloat(e.target.value) || 0, 0),
+                })
+              }
+              className={`w-full rounded-lg bg-zinc-800 py-2 text-sm text-zinc-100 outline-none ring-1 ring-zinc-700 focus:ring-emerald-500 ${
+                field.prefix ? "pl-7 pr-3" : "pl-3 pr-8"
+              }`}
+            />
+            {field.suffix && (
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+                {field.suffix}
+              </span>
+            )}
+          </div>
+          <span className="mt-1.5 block text-[11px] leading-snug text-zinc-500">
+            {field.help}
+          </span>
+        </label>
+      ))}
+    </div>
   );
 }

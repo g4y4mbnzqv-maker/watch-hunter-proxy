@@ -5,6 +5,7 @@ import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
 import { formatGbp, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
+import { assessSeller } from "@/lib/seller";
 
 const QUICK_BRANDS = ["Seiko", "Citizen", "Orient", "Tissot", "Hamilton", "Casio", "Omega"];
 
@@ -30,6 +31,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
   const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {});
+  const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
   const [showSettings, setShowSettings] = useState(false);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
@@ -74,12 +76,23 @@ export default function Home() {
     });
   }
 
+  const live = useMemo(() => {
+    const merged = { ...DEFAULT_SETTINGS, ...settings };
+
+    return results
+      .map((item) => ({
+        ...analyse(item, merged, overrides[item.itemId]),
+        sellerCheck: assessSeller(item.seller, merged),
+      }))
+      .filter((item) => hoursLeft(item.endTime, now) > 0);
+  }, [results, settings, overrides, now]);
+
+  const riskyCount = live.filter((item) => item.sellerCheck.level === "risky").length;
+
   const analysed = useMemo(
     () =>
-      results
-        .map((item) => analyse(item, { ...DEFAULT_SETTINGS, ...settings }, overrides[item.itemId]))
-        .filter((item) => hoursLeft(item.endTime, now) > 0),
-    [results, settings, overrides, now]
+      hideRisky ? live.filter((item) => item.sellerCheck.level !== "risky") : live,
+    [live, hideRisky]
   );
 
   const visible = useMemo(() => {
@@ -134,7 +147,7 @@ export default function Home() {
               : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
           }`}
         >
-          Profit settings
+          Settings
         </button>
       </header>
 
@@ -187,6 +200,15 @@ export default function Home() {
             />
             Include parts and repairs
           </label>
+          <label className="flex items-center gap-2 text-xs text-zinc-400">
+            <input
+              type="checkbox"
+              checked={hideRisky}
+              onChange={(e) => setHideRisky(e.target.checked)}
+              className="accent-emerald-500"
+            />
+            Hide risky sellers
+          </label>
         </div>
       </section>
 
@@ -210,7 +232,15 @@ export default function Home() {
       {!loading && scannedBrand && !error && (
         <>
           <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Auctions found" value={stats.scanned} />
+            <Stat
+              label="Auctions found"
+              value={stats.scanned}
+              note={
+                hideRisky && riskyCount > 0
+                  ? `${riskyCount} from risky sellers hidden`
+                  : null
+              }
+            />
             <Stat
               label="With a resale estimate"
               value={stats.priced}
@@ -292,7 +322,7 @@ const SORTERS = {
   ending: (a, b) => new Date(a.endTime) - new Date(b.endTime),
 };
 
-function Stat({ label, value, accent = false }) {
+function Stat({ label, value, note, accent = false }) {
   return (
     <div className="rounded-2xl bg-zinc-900 px-4 py-3 ring-1 ring-zinc-800">
       <div className="text-xs text-zinc-400">{label}</div>
@@ -303,6 +333,7 @@ function Stat({ label, value, accent = false }) {
       >
         {value}
       </div>
+      {note && <div className="mt-0.5 text-[11px] text-zinc-500">{note}</div>}
     </div>
   );
 }
@@ -317,7 +348,7 @@ function EmptyView({ view, onShowAll }) {
       </p>
       <p className="mt-1 text-xs text-zinc-500">
         {view === "deals"
-          ? "Try another brand, lower the target in Profit settings, or add your own resale values."
+          ? "Try another brand, lower the target in Settings, or add your own resale values."
           : "Try another brand or view."}
       </p>
       {view !== "all" && (

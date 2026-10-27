@@ -30,6 +30,12 @@ const STATUS_STYLES = {
   },
 };
 
+const SELLER_STYLES = {
+  trusted: { dot: "bg-emerald-400", text: "text-zinc-400" },
+  caution: { dot: "bg-amber-400", text: "text-amber-300" },
+  risky: { dot: "bg-rose-500", text: "text-rose-300" },
+};
+
 export default function AuctionCard({ item, now, onSetResale }) {
   const style = STATUS_STYLES[item.status];
   const hours = hoursLeft(item.endTime, now);
@@ -92,6 +98,8 @@ export default function AuctionCard({ item, now, onSetResale }) {
           </div>
         </div>
 
+        <SellerLine seller={item.seller} check={item.sellerCheck} />
+
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Figure
             label="Cost now"
@@ -138,6 +146,44 @@ export default function AuctionCard({ item, now, onSetResale }) {
         </a>
       </div>
     </article>
+  );
+}
+
+function SellerLine({ seller, check }) {
+  const style = SELLER_STYLES[check.level];
+  const feedback =
+    seller?.feedbackScore != null
+      ? `${seller.feedbackScore.toLocaleString("en-GB")} feedback${
+          seller.feedbackPercentage != null ? ` · ${seller.feedbackPercentage}%` : ""
+        }`
+      : "feedback not shown";
+
+  return (
+    <div
+      className={`rounded-xl px-3 py-2 text-xs ${
+        check.level === "risky"
+          ? "bg-rose-950/50 ring-1 ring-rose-500/40"
+          : check.level === "caution"
+          ? "bg-amber-950/30 ring-1 ring-amber-500/30"
+          : "bg-zinc-950/60"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 shrink-0 rounded-full ${style.dot}`} />
+        <span className="truncate text-zinc-200">
+          {seller?.username ?? "Unknown seller"}
+        </span>
+        <span className="ml-auto shrink-0 tabular-nums text-zinc-400">
+          {feedback}
+        </span>
+      </div>
+      {check.level !== "trusted" && (
+        <div className={`mt-1 ${style.text}`}>
+          {check.level === "risky" ? "Risky seller: " : "Check this seller: "}
+          {check.reasons.join(", ")}
+        </div>
+      )}
+    </div>
   );
 }
 
