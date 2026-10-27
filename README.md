@@ -20,6 +20,7 @@ npm run dev
 - `lib/models.js` pulls a model reference (SKX007, 6139-6002, CA0695-84E and so on) out of each title. For each reference, the app looks up current Buy It Now listings and takes the median asking price. A reference needs at least 3 matching listings to get an estimate. These lookups are cached for an hour.
 - `lib/profit.js` turns that into a resale value, profit and the most you can bid. The defaults are a resale value of 85% of the median asking price, 13% selling fees, £5 postage to your buyer and a £30 target profit. You can change all of them under Settings.
 - `lib/seller.js` checks each seller's eBay feedback. Fewer than 50 ratings or under 98% positive gets a caution flag (both editable in Settings). Fewer than 10 ratings or under 95% positive is marked risky, and risky sellers are hidden unless you untick "Hide risky sellers".
+- "Top deals" scans the popular brands (Seiko, Citizen, Orient, Casio, Swatch, Tissot, Hamilton, Omega, Rolex), three at a time, and shows the combined deals with the highest profit first. Each card is tagged with its brand. If a brand fails, the others still show with a note.
 - The bookmark on each card saves the auction to your watchlist. Opening the watchlist refreshes saved auctions from eBay (one call per auction, at most once a minute unless you press "Refresh bids"). Auctions eBay no longer returns are marked as ended and can be cleared in one go.
 - "Check prices" links on each live card open Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
 - On any card you can type your own resale value. It overrides the estimate, and your settings, resale values and watchlist are saved in your browser, so they don't carry over to another device or browser.
@@ -27,7 +28,7 @@ npm run dev
 
 ## API usage
 
-Each scan makes 1 search call, plus 1 call for each new model reference found (up to about 50, usually far fewer). eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call, plus 1 call for each new model reference found (up to about 50, usually far fewer). Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Known limits
 

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const POPULAR = ["Seiko", "Citizen", "Orient", "Casio", "Swatch", "Tissot", "Hamilton", "Omega", "Rolex"];
+export const POPULAR = ["Seiko", "Citizen", "Orient", "Casio", "Swatch", "Tissot", "Hamilton", "Omega", "Rolex"];
 
 const MORE_GROUPS = [
   {

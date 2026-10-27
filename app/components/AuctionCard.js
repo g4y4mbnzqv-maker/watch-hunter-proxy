@@ -107,6 +107,11 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
             {item.title}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+            {item.brand && (
+              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-300">
+                {item.brand}
+              </span>
+            )}
             {item.modelRef && (
               <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-zinc-300">
                 {item.modelRef}
