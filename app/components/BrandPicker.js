@@ -2,19 +2,23 @@
 
 import { useState } from "react";
 
-const POPULAR = ["Seiko", "Citizen", "Orient", "Casio", "Tissot", "Hamilton", "Omega", "Rolex"];
+const POPULAR = ["Seiko", "Citizen", "Orient", "Casio", "Swatch", "Tissot", "Hamilton", "Omega", "Rolex"];
 
 const MORE_GROUPS = [
   {
     label: "Everyday and vintage",
-    brands: ["Timex", "Bulova", "Swatch", "Accurist", "Rotary", "Sekonda", "Smiths", "Lorus", "Pulsar", "Fossil"],
+    brands: ["Timex", "Bulova", "Accurist", "Rotary", "Sekonda", "Smiths", "Lorus", "Pulsar", "Fossil"],
   },
   {
     label: "Mid-range",
     brands: [
       "Longines", "TAG Heuer", "Oris", "Certina", "Mido", "Rado", "Raymond Weil",
-      "Junghans", "Sinn", "Christopher Ward", "Baume & Mercier", "Frederique Constant",
+      "Junghans", "Sinn", "Baume & Mercier", "Frederique Constant",
     ],
+  },
+  {
+    label: "Microbrands",
+    brands: ["Studio Underdog", "Christopher Ward"],
   },
   {
     label: "Luxury",
