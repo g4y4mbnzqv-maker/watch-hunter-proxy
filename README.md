@@ -20,7 +20,8 @@ npm run dev
 - `lib/models.js` pulls a model reference (SKX007, 6139-6002, CA0695-84E and so on) out of each title. For each reference, the app looks up current Buy It Now listings and takes the median asking price. A reference needs at least 3 matching listings to get an estimate. These lookups are cached for an hour.
 - `lib/profit.js` turns that into a resale value, profit and the most you can bid. The defaults are a resale value of 85% of the median asking price, 13% selling fees, £5 postage to your buyer and a £30 target profit. You can change all of them under Settings.
 - `lib/seller.js` checks each seller's eBay feedback. Fewer than 50 ratings or under 98% positive gets a caution flag (both editable in Settings). Fewer than 10 ratings or under 95% positive is marked risky, and risky sellers are hidden unless you untick "Hide risky sellers".
-- On any card you can type your own resale value. It overrides the estimate, and your settings and resale values are saved in your browser.
+- The bookmark on each card saves the auction to your watchlist. Opening the watchlist refreshes saved auctions from eBay (one call per auction, at most once a minute unless you press "Refresh bids"). Auctions eBay no longer returns are marked as ended and can be cleared in one go.
+- On any card you can type your own resale value. It overrides the estimate, and your settings, resale values and watchlist are saved in your browser, so they don't carry over to another device or browser.
 - Prices include the cheapest listed postage option. When eBay doesn't list a postage cost (collection only or calculated postage), the card shows "postage unknown" and postage counts as zero.
 
 ## API usage

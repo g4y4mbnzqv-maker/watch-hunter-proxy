@@ -15,6 +15,16 @@ const VIEWS = [
   { key: "all", label: "Everything" },
 ];
 
+// Listing fields kept for each saved auction, so the watchlist shows
+// without a scan and survives the listing ending
+const SNAPSHOT_FIELDS = [
+  "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
+  "postage", "totalCost", "bidCount", "endTime", "seller", "comps",
+];
+
+// Opening the watchlist refreshes it if the last refresh is older than this
+const WATCHLIST_STALE_MS = 60_000;
+
 const SORTS = [
   { key: "ending", label: "Ending soonest" },
   { key: "profit", label: "Highest profit" },
@@ -32,6 +42,11 @@ export default function Home() {
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
   const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {});
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
+  const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
+  const [mode, setMode] = useState("scan");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(null);
+  const [refreshedAt, setRefreshedAt] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
@@ -66,6 +81,78 @@ export default function Home() {
       setLoading(false);
     }
   }
+
+  function toggleSave(item) {
+    setWatchlist((current) => {
+      const next = { ...current };
+      if (next[item.itemId]) {
+        delete next[item.itemId];
+      } else {
+        next[item.itemId] = {
+          ...pick(item, SNAPSHOT_FIELDS),
+          savedAt: Date.now(),
+        };
+      }
+      return next;
+    });
+  }
+
+  async function refreshWatchlist() {
+    const ids = Object.keys(watchlist).filter((id) => !watchlist[id].ended);
+    if (!ids.length) return;
+
+    setRefreshing(true);
+    setRefreshError(null);
+
+    try {
+      const res = await fetch(`/api/items?${new URLSearchParams({ ids: ids.join(",") })}`);
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.message || `Refresh failed (${res.status})`);
+      }
+
+      setWatchlist((current) => {
+        const next = { ...current };
+        for (const item of data.items) {
+          if (!next[item.itemId]) continue;
+          // Keep the resale comparables from when it was saved
+          next[item.itemId] = {
+            ...next[item.itemId],
+            ...pick(item, SNAPSHOT_FIELDS.filter((field) => field !== "comps")),
+          };
+        }
+        for (const itemId of data.missing) {
+          if (next[itemId]) next[itemId] = { ...next[itemId], ended: true };
+        }
+        return next;
+      });
+      setRefreshedAt(Date.now());
+    } catch (err) {
+      console.error(err);
+      setRefreshError(err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  function clearEnded() {
+    setWatchlist((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(
+          ([, item]) => !item.ended && hoursLeft(item.endTime, Date.now()) > 0
+        )
+      )
+    );
+  }
+
+  useEffect(() => {
+    if (mode !== "watchlist" || refreshing) return;
+    if (refreshedAt && Date.now() - refreshedAt < WATCHLIST_STALE_MS) return;
+    refreshWatchlist();
+    // Only re-run when the watchlist is opened
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   function setResale(itemId, value) {
     setOverrides((current) => {
@@ -121,6 +208,27 @@ export default function Home() {
     };
   }, [analysed]);
 
+  const watched = useMemo(() => {
+    const merged = { ...DEFAULT_SETTINGS, ...settings };
+
+    return Object.values(watchlist)
+      .map((item) => ({
+        ...analyse(item, merged, overrides[item.itemId]),
+        sellerCheck: assessSeller(item.seller, merged),
+        ended: item.ended || hoursLeft(item.endTime, now) <= 0,
+      }))
+      // Live auctions first, ending soonest; then ended ones, latest first
+      .sort((a, b) =>
+        a.ended !== b.ended
+          ? a.ended - b.ended
+          : a.ended
+          ? new Date(b.endTime) - new Date(a.endTime)
+          : new Date(a.endTime) - new Date(b.endTime)
+      );
+  }, [watchlist, settings, overrides, now]);
+
+  const endedCount = watched.filter((item) => item.ended).length;
+
   const counts = {
     deals: stats.deals,
     soon: analysed.filter((item) => hoursLeft(item.endTime, now) < 6).length,
@@ -151,66 +259,28 @@ export default function Home() {
         </button>
       </header>
 
-      <section className="mb-6 rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800 sm:p-5">
-        <form
-          className="flex flex-col gap-3 sm:flex-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            scan();
-          }}
-        >
-          <input
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-            className="flex-1 rounded-xl bg-zinc-800 px-4 py-3 text-zinc-100 outline-none ring-1 ring-zinc-700 placeholder:text-zinc-500 focus:ring-emerald-500"
-            placeholder="Brand or model, such as Seiko SKX007"
-          />
+      <nav className="mb-6 flex w-fit rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
+        {[
+          { key: "scan", label: "Find deals" },
+          { key: "watchlist", label: "Watchlist", count: watched.length },
+        ].map((tab) => (
           <button
-            type="submit"
-            disabled={loading}
-            className="rounded-xl bg-emerald-500 px-6 py-3 font-medium text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-60"
+            key={tab.key}
+            type="button"
+            onClick={() => setMode(tab.key)}
+            className={`rounded-lg px-4 py-2 text-sm transition ${
+              mode === tab.key
+                ? "bg-zinc-100 text-zinc-950"
+                : "text-zinc-400 hover:text-zinc-200"
+            }`}
           >
-            {loading ? "Scanning…" : "Find deals"}
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="ml-1.5 tabular-nums opacity-60">{tab.count}</span>
+            )}
           </button>
-        </form>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {QUICK_BRANDS.map((name) => (
-            <button
-              key={name}
-              type="button"
-              disabled={loading}
-              onClick={() => scan(name)}
-              className={`rounded-full px-3 py-1 text-xs ring-1 transition ${
-                scannedBrand?.toLowerCase() === name.toLowerCase()
-                  ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-                  : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
-              }`}
-            >
-              {name}
-            </button>
-          ))}
-
-          <label className="ml-auto flex items-center gap-2 text-xs text-zinc-400">
-            <input
-              type="checkbox"
-              checked={includeJunk}
-              onChange={(e) => setIncludeJunk(e.target.checked)}
-              className="accent-emerald-500"
-            />
-            Include parts and repairs
-          </label>
-          <label className="flex items-center gap-2 text-xs text-zinc-400">
-            <input
-              type="checkbox"
-              checked={hideRisky}
-              onChange={(e) => setHideRisky(e.target.checked)}
-              className="accent-emerald-500"
-            />
-            Hide risky sellers
-          </label>
-        </div>
-      </section>
+        ))}
+      </nav>
 
       {showSettings && (
         <div className="mb-6">
@@ -221,94 +291,177 @@ export default function Home() {
         </div>
       )}
 
-      {error && (
-        <div className="mb-6 rounded-2xl bg-rose-950/40 p-4 text-sm text-rose-200 ring-1 ring-rose-500/40">
-          {error}
-        </div>
+      {mode === "watchlist" && (
+        <Watchlist
+          items={watched}
+          now={now}
+          endedCount={endedCount}
+          refreshing={refreshing}
+          refreshError={refreshError}
+          refreshedAt={refreshedAt}
+          onRefresh={refreshWatchlist}
+          onClearEnded={clearEnded}
+          onToggleSave={toggleSave}
+          onSetResale={setResale}
+          onFindDeals={() => setMode("scan")}
+        />
       )}
 
-      {loading && <LoadingGrid />}
-
-      {!loading && scannedBrand && !error && (
+      {mode === "scan" && (
         <>
-          <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat
-              label="Auctions found"
-              value={stats.scanned}
-              note={
-                hideRisky && riskyCount > 0
-                  ? `${riskyCount} from risky sellers hidden`
-                  : null
-              }
-            />
-            <Stat
-              label="With a resale estimate"
-              value={stats.priced}
-            />
-            <Stat
-              label={`Clearing ${formatGbp(settings.minProfit ?? DEFAULT_SETTINGS.minProfit)}`}
-              value={stats.deals}
-              accent={stats.deals > 0}
-            />
-            <Stat
-              label="Best profit at current bid"
-              value={formatGbp(stats.best)}
-              accent={stats.best !== null && stats.best > 0}
-            />
-          </section>
+          <section className="mb-6 rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800 sm:p-5">
+            <form
+              className="flex flex-col gap-3 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                scan();
+              }}
+            >
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                className="flex-1 rounded-xl bg-zinc-800 px-4 py-3 text-zinc-100 outline-none ring-1 ring-zinc-700 placeholder:text-zinc-500 focus:ring-emerald-500"
+                placeholder="Brand or model, such as Seiko SKX007"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-xl bg-emerald-500 px-6 py-3 font-medium text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-60"
+              >
+                {loading ? "Scanning…" : "Find deals"}
+              </button>
+            </form>
 
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
-              {VIEWS.map((option) => (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {QUICK_BRANDS.map((name) => (
                 <button
-                  key={option.key}
+                  key={name}
                   type="button"
-                  onClick={() => setView(option.key)}
-                  className={`rounded-lg px-3 py-1.5 text-sm transition ${
-                    view === option.key
-                      ? "bg-zinc-100 text-zinc-950"
-                      : "text-zinc-400 hover:text-zinc-200"
+                  disabled={loading}
+                  onClick={() => scan(name)}
+                  className={`rounded-full px-3 py-1 text-xs ring-1 transition ${
+                    scannedBrand?.toLowerCase() === name.toLowerCase()
+                      ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
+                      : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
                   }`}
                 >
-                  {option.label}
-                  <span className="ml-1.5 tabular-nums opacity-60">
-                    {counts[option.key]}
-                  </span>
+                  {name}
                 </button>
               ))}
-            </div>
 
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              className="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none ring-1 ring-zinc-800"
-            >
-              {SORTS.map((option) => (
-                <option key={option.key} value={option.key}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {visible.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {visible.map((item) => (
-                <AuctionCard
-                  key={item.itemId}
-                  item={item}
-                  now={now}
-                  onSetResale={setResale}
+              <label className="ml-auto flex items-center gap-2 text-xs text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={includeJunk}
+                  onChange={(e) => setIncludeJunk(e.target.checked)}
+                  className="accent-emerald-500"
                 />
-              ))}
+                Include parts and repairs
+              </label>
+              <label className="flex items-center gap-2 text-xs text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={hideRisky}
+                  onChange={(e) => setHideRisky(e.target.checked)}
+                  className="accent-emerald-500"
+                />
+                Hide risky sellers
+              </label>
             </div>
-          ) : (
-            <EmptyView view={view} onShowAll={() => setView("all")} />
+          </section>
+
+          {error && (
+            <div className="mb-6 rounded-2xl bg-rose-950/40 p-4 text-sm text-rose-200 ring-1 ring-rose-500/40">
+              {error}
+            </div>
           )}
+
+          {loading && <LoadingGrid />}
+
+          {!loading && scannedBrand && !error && (
+            <>
+              <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+                <Stat
+                  label="Auctions found"
+                  value={stats.scanned}
+                  note={
+                    hideRisky && riskyCount > 0
+                      ? `${riskyCount} from risky sellers hidden`
+                      : null
+                  }
+                />
+                <Stat
+                  label="With a resale estimate"
+                  value={stats.priced}
+                />
+                <Stat
+                  label={`Clearing ${formatGbp(settings.minProfit ?? DEFAULT_SETTINGS.minProfit)}`}
+                  value={stats.deals}
+                  accent={stats.deals > 0}
+                />
+                <Stat
+                  label="Best profit at current bid"
+                  value={formatGbp(stats.best)}
+                  accent={stats.best !== null && stats.best > 0}
+                />
+              </section>
+
+              <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
+                  {VIEWS.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setView(option.key)}
+                      className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                        view === option.key
+                          ? "bg-zinc-100 text-zinc-950"
+                          : "text-zinc-400 hover:text-zinc-200"
+                      }`}
+                    >
+                      {option.label}
+                      <span className="ml-1.5 tabular-nums opacity-60">
+                        {counts[option.key]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none ring-1 ring-zinc-800"
+                >
+                  {SORTS.map((option) => (
+                    <option key={option.key} value={option.key}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {visible.length > 0 ? (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {visible.map((item) => (
+                    <AuctionCard
+                      key={item.itemId}
+                      item={item}
+                      now={now}
+                      onSetResale={setResale}
+                      saved={Boolean(watchlist[item.itemId])}
+                      onToggleSave={toggleSave}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <EmptyView view={view} onShowAll={() => setView("all")} />
+              )}
+            </>
+          )}
+
+          {!loading && !scannedBrand && !error && <Intro />}
         </>
       )}
-
-      {!loading && !scannedBrand && !error && <Intro />}
     </main>
   );
 }
@@ -321,6 +474,99 @@ const SORTERS = {
     (a.maxBid === null ? -Infinity : a.maxBid - a.currentBid),
   ending: (a, b) => new Date(a.endTime) - new Date(b.endTime),
 };
+
+function Watchlist({
+  items,
+  now,
+  endedCount,
+  refreshing,
+  refreshError,
+  refreshedAt,
+  onRefresh,
+  onClearEnded,
+  onToggleSave,
+  onSetResale,
+  onFindDeals,
+}) {
+  if (!items.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-12 text-center">
+        <p className="text-sm text-zinc-300">Your watchlist is empty.</p>
+        <p className="mt-1 text-xs text-zinc-500">
+          Tap the bookmark on any auction to save it here.
+        </p>
+        <button
+          type="button"
+          onClick={onFindDeals}
+          className="mt-4 rounded-xl px-4 py-2 text-sm text-zinc-200 ring-1 ring-zinc-700 hover:ring-zinc-500"
+        >
+          Find deals
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <section>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-zinc-400">
+          {refreshing
+            ? "Checking eBay for the latest bids…"
+            : refreshedAt
+            ? `Bids updated ${new Date(refreshedAt).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : "Showing bids from when you saved each auction"}
+        </p>
+        <div className="flex gap-2">
+          {endedCount > 0 && (
+            <button
+              type="button"
+              onClick={onClearEnded}
+              className="rounded-xl px-3 py-2 text-sm text-zinc-300 ring-1 ring-zinc-700 hover:ring-zinc-500"
+            >
+              Clear {endedCount} ended
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="rounded-xl bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-950 transition hover:bg-white disabled:opacity-60"
+          >
+            {refreshing ? "Refreshing…" : "Refresh bids"}
+          </button>
+        </div>
+      </div>
+
+      {refreshError && (
+        <div className="mb-5 rounded-2xl bg-rose-950/40 p-4 text-sm text-rose-200 ring-1 ring-rose-500/40">
+          Couldn't refresh from eBay: {refreshError}
+        </div>
+      )}
+
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <AuctionCard
+            key={item.itemId}
+            item={item}
+            now={now}
+            onSetResale={onSetResale}
+            saved
+            onToggleSave={onToggleSave}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function pick(object, fields) {
+  return Object.fromEntries(
+    fields.filter((field) => field in object).map((field) => [field, object[field]])
+  );
+}
 
 function Stat({ label, value, note, accent = false }) {
   return (
