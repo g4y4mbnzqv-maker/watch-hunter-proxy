@@ -5,7 +5,8 @@ import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
 import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import UsageMeter from "./components/UsageMeter";
-import { formatGbp, hoursLeft } from "./components/format";
+import EndingSoon from "./components/EndingSoon";
+import { formatGbp, formatTimeLeft, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
 import { baseModel } from "@/lib/models";
@@ -28,6 +29,10 @@ const SNAPSHOT_FIELDS = [
 const TOP_DEALS = "Top deals";
 // Brands scanned at once by Top deals, to stay gentle on the eBay API
 const TOP_DEALS_CONCURRENCY = 3;
+
+// Saved auctions with this many minutes left go in the ending-soon banner
+// and, if alerts are on, trigger a notification
+const ENDING_SOON_MINUTES = 10;
 
 // Opening the watchlist refreshes it if the last refresh is older than this
 const WATCHLIST_STALE_MS = 60_000;
@@ -63,6 +68,10 @@ export default function Home() {
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
   const [usage, setUsage] = useState(null);
+  const [alertsOn, setAlertsOn] = useStoredState("wh-alerts", false);
+  // Item IDs already notified, so each auction alerts once
+  const [alerted, setAlerted] = useStoredState("wh-alerted", {});
+  const [alertNote, setAlertNote] = useState(null);
   const now = useNow(30_000);
 
   // The meter is a nice-to-have, so any failure just hides it
@@ -78,7 +87,30 @@ export default function Home() {
 
   useEffect(() => {
     refreshUsage();
+    // Phones need a service worker to show notifications
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
   }, []);
+
+  async function enableAlerts() {
+    if (!("Notification" in window)) {
+      setAlertNote(
+        "This browser can't show alerts. Auctions ending soon will still appear at the top of the page."
+      );
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setAlertsOn(true);
+      setAlertNote(null);
+    } else {
+      setAlertNote(
+        "Notifications are blocked for this site. Allow them in your browser settings to get alerts."
+      );
+    }
+  }
 
   async function fetchBrand(query) {
     const params = new URLSearchParams({ brand: query });
@@ -354,6 +386,33 @@ export default function Home() {
 
   const endedCount = watched.filter((item) => item.ended).length;
 
+  const endingSoon = watched.filter(
+    (item) => !item.ended && hoursLeft(item.endTime, now) * 60 <= ENDING_SOON_MINUTES
+  );
+
+  useEffect(() => {
+    if (!alertsOn || !("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+
+    const fresh = endingSoon.filter((item) => !alerted[item.itemId]);
+    if (!fresh.length) return;
+
+    fresh.forEach((item) => notify(item, now));
+    setAlerted((current) => {
+      // Forget auctions no longer on the watchlist so the list stays small
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([itemId]) => watchlist[itemId])
+      );
+      fresh.forEach((item) => {
+        next[item.itemId] = true;
+      });
+      return next;
+    });
+    // endingSoon is rebuilt from watched and now on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertsOn, watched, now]);
+
   const counts = {
     deals: stats.deals,
     soon: analysed.filter((item) => hoursLeft(item.endTime, now) < 6).length,
@@ -410,6 +469,8 @@ export default function Home() {
         ))}
       </nav>
 
+      <EndingSoon items={endingSoon} now={now} />
+
       {showSettings && (
         <div className="mb-6">
           <SettingsPanel
@@ -432,6 +493,10 @@ export default function Home() {
           onToggleSave={toggleSave}
           onSetResale={setResale}
           onFindDeals={() => setMode("scan")}
+          alertsOn={alertsOn}
+          alertNote={alertNote}
+          onEnableAlerts={enableAlerts}
+          onDisableAlerts={() => setAlertsOn(false)}
         />
       )}
 
@@ -635,6 +700,10 @@ function Watchlist({
   onToggleSave,
   onSetResale,
   onFindDeals,
+  alertsOn,
+  alertNote,
+  onEnableAlerts,
+  onDisableAlerts,
 }) {
   if (!items.length) {
     return (
@@ -667,7 +736,19 @@ function Watchlist({
               })}`
             : "Showing bids from when you saved each auction"}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={alertsOn ? onDisableAlerts : onEnableAlerts}
+            aria-pressed={alertsOn}
+            className={`rounded-xl px-3 py-2 text-sm ring-1 transition ${
+              alertsOn
+                ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/50"
+                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+            }`}
+          >
+            {alertsOn ? "Alerts on" : "Alert me 10 min before"}
+          </button>
           {endedCount > 0 && (
             <button
               type="button"
@@ -687,6 +768,12 @@ function Watchlist({
           </button>
         </div>
       </div>
+
+      {alertNote && (
+        <div className="mb-5 rounded-2xl bg-amber-950/30 p-4 text-sm text-amber-200 ring-1 ring-amber-500/30">
+          {alertNote}
+        </div>
+      )}
 
       {refreshError && (
         <div className="mb-5 rounded-2xl bg-rose-950/40 p-4 text-sm text-rose-200 ring-1 ring-rose-500/40">
@@ -714,6 +801,33 @@ function Watchlist({
 function hiddenNote(parts) {
   const text = parts.filter(Boolean).join(", ");
   return text ? `Hidden: ${text}` : null;
+}
+
+// Shows a notification through the service worker where there is one, as
+// Android requires, or straight from the page otherwise
+async function notify(item, now) {
+  const title = `Ends in ${formatTimeLeft(item.endTime, now)}: ${item.title}`;
+  const options = {
+    body:
+      item.maxBid !== null
+        ? `Now ${formatGbp(item.totalCost)}. Bid up to ${formatGbp(item.maxBid)}.`
+        : `Now ${formatGbp(item.totalCost)}.`,
+    tag: item.itemId,
+    icon: "/icons/icon-192.png",
+    data: { url: item.url },
+  };
+
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (registration) {
+      await registration.showNotification(title, options);
+    } else {
+      new Notification(title, options);
+    }
+  } catch (err) {
+    // The banner still shows the auction
+    console.error(err);
+  }
 }
 
 function pick(object, fields) {
