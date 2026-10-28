@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
 import BrandPicker, { POPULAR } from "./components/BrandPicker";
+import UsageMeter from "./components/UsageMeter";
 import { formatGbp, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
@@ -61,7 +62,23 @@ export default function Home() {
   const [topFailures, setTopFailures] = useState([]);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
+  const [usage, setUsage] = useState(null);
   const now = useNow(30_000);
+
+  // The meter is a nice-to-have, so any failure just hides it
+  async function refreshUsage() {
+    try {
+      const res = await fetch("/api/usage");
+      const data = await res.json();
+      setUsage(res.ok && !data.error ? data.usage : null);
+    } catch {
+      setUsage(null);
+    }
+  }
+
+  useEffect(() => {
+    refreshUsage();
+  }, []);
 
   async function fetchBrand(query) {
     const params = new URLSearchParams({ brand: query });
@@ -88,6 +105,7 @@ export default function Home() {
 
     try {
       setResults(await fetchBrand(query));
+      refreshUsage();
       setScannedBrand(query);
     } catch (err) {
       console.error(err);
@@ -144,6 +162,7 @@ export default function Home() {
     }
 
     setTopProgress(null);
+    refreshUsage();
     setLoading(false);
   }
 
@@ -193,6 +212,7 @@ export default function Home() {
         return next;
       });
       setRefreshedAt(Date.now());
+      refreshUsage();
     } catch (err) {
       console.error(err);
       setRefreshError(err.message);
@@ -351,17 +371,20 @@ export default function Home() {
             eBay UK watch auctions you can resell at a profit
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowSettings((open) => !open)}
-          className={`rounded-xl px-4 py-2 text-sm ring-1 transition ${
-            showSettings
-              ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-              : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
-          }`}
-        >
-          Settings
-        </button>
+        <div className="flex items-end gap-4">
+          <UsageMeter usage={usage} />
+          <button
+            type="button"
+            onClick={() => setShowSettings((open) => !open)}
+            className={`rounded-xl px-4 py-2 text-sm ring-1 transition ${
+              showSettings
+                ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
+                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+            }`}
+          >
+            Settings
+          </button>
+        </div>
       </header>
 
       <nav className="mb-6 flex w-fit rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
