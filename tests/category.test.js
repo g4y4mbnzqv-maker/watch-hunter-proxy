@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { getWatchCategoryId, isWatchListing, searchAuctions } from "@/lib/ebay";
+import { getWatchCategoryId, isWatchListing, searchListings } from "@/lib/ebay";
 
 beforeAll(() => {
   process.env.EBAY_CLIENT_ID = "id";
@@ -79,7 +79,7 @@ describe("watch category", () => {
 
     expect(await getWatchCategoryId()).toBe("31387");
 
-    const { items, stats } = await searchAuctions("omega category test");
+    const { items, stats } = await searchListings("omega category test");
     expect(searches[0].searchParams.get("category_ids")).toBe("31387");
     expect(items.map((item) => item.itemId)).toEqual(["w"]);
     expect(stats.notWatches).toBe(1);
