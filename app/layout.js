@@ -3,6 +3,23 @@ import "./globals.css";
 export const metadata = {
   title: "Watch Hunter",
   description: "Find eBay UK watch auctions you can resell at a profit",
+  icons: {
+    icon: "/icons/favicon-32.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+  // Opens full screen when added to an iPhone home screen
+  appleWebApp: {
+    capable: true,
+    title: "Watch Hunter",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport = {
+  themeColor: "#09090b",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {
