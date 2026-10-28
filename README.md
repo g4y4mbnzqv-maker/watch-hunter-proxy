@@ -41,6 +41,7 @@ It then opens full screen from its own icon.
 - The meter in the header shows how many Browse API calls this app has used against eBay's limit, read from eBay's Developer Analytics API. It turns amber at 80% and red at 95%.
 - "Check prices" links on each live card open Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
 - On any card you can type your own resale value. On a card with a model reference, the value is saved for that model and used for every listing of it from then on; without a reference, it applies to that listing only. Your values override the estimate, and your settings, resale values and watchlist are saved in your browser, so they don't carry over to another device or browser.
+- When a brand scan finds nothing, the page says why: either eBay has no UK auctions for it (with a count of UK Buy It Now listings and a link to them, from one extra call), or eBay found auctions that the replica, parts or UK filters removed, with how many of each.
 - Prices include the cheapest listed postage option. When eBay doesn't list a postage cost (collection only or calculated postage), the card shows "postage unknown" and postage counts as zero.
 
 ## API usage

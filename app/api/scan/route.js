@@ -15,7 +15,7 @@ export async function GET(req) {
   }
 
   try {
-    const auctions = await searchAuctions(brand, { includeJunk });
+    const { items: auctions, stats } = await searchAuctions(brand, { includeJunk });
     const comps = await getComparables(brand, auctions);
 
     const results = auctions.map((item) => ({
@@ -26,6 +26,7 @@ export async function GET(req) {
     return Response.json({
       brand,
       count: results.length,
+      stats,
       results,
     });
   } catch (err) {

@@ -7,6 +7,7 @@ import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import UsageMeter from "./components/UsageMeter";
 import EndingSoon from "./components/EndingSoon";
 import ConditionFilter from "./components/ConditionFilter";
+import ScanExplainer from "./components/ScanExplainer";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
@@ -55,6 +56,8 @@ export default function Home() {
   const [includeJunk, setIncludeJunk] = useState(false);
   const [results, setResults] = useState([]);
   const [scannedBrand, setScannedBrand] = useState(null);
+  // What eBay returned for the last single-brand scan, to explain empty ones
+  const [scanStats, setScanStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
@@ -131,7 +134,7 @@ export default function Home() {
       throw new Error(data.message || `Scan failed (${res.status})`);
     }
 
-    return data.results;
+    return data;
   }
 
   async function scan(searchBrand = brand) {
@@ -144,7 +147,9 @@ export default function Home() {
     setTopFailures([]);
 
     try {
-      setResults(await fetchBrand(query));
+      const data = await fetchBrand(query);
+      setResults(data.results);
+      setScanStats(data.stats ?? null);
       refreshUsage();
       setScannedBrand(query);
     } catch (err) {
@@ -173,7 +178,7 @@ export default function Home() {
       await Promise.all(
         batch.map(async (name) => {
           try {
-            for (const item of await fetchBrand(name)) {
+            for (const item of (await fetchBrand(name)).results) {
               // A listing can match two brands, such as Seiko and Grand Seiko
               if (!combined.has(item.itemId)) {
                 combined.set(item.itemId, { ...item, brand: name });
@@ -196,6 +201,7 @@ export default function Home() {
     } else {
       setResults([...combined.values()]);
       setScannedBrand(TOP_DEALS);
+      setScanStats(null);
       setTopFailures(failures.map((failure) => failure.name));
       setView("deals");
       setSort("profit");
@@ -616,7 +622,11 @@ export default function Home() {
             </div>
           )}
 
-          {!loading && scannedBrand && !error && (
+          {!loading && scannedBrand && !error && results.length === 0 && scanStats && (
+            <ScanExplainer brand={scannedBrand} stats={scanStats} includeJunk={includeJunk} />
+          )}
+
+          {!loading && scannedBrand && !error && !(results.length === 0 && scanStats) && (
             <>
               <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Stat

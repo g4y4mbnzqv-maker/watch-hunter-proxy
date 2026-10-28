@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { getComparables, getUsage } from "@/lib/ebay";
+import { getComparables, getUsage, searchAuctions } from "@/lib/ebay";
 
 const listing = (title, price) => ({
   title,
@@ -99,5 +99,54 @@ describe("getUsage", () => {
       used: 812,
       reset: "2026-10-29T07:00:00.000Z",
     });
+  });
+});
+
+describe("searchAuctions", () => {
+  const auction = (id, title, country = "GB") => ({
+    itemId: id,
+    title,
+    currentBidPrice: { value: "50" },
+    itemEndDate: new Date(Date.now() + 3_600_000).toISOString(),
+    itemLocation: { country },
+  });
+
+  it("says what happened to each auction eBay returned", async () => {
+    fakeEbay(() => ({
+      total: 4,
+      itemSummaries: [
+        auction("1", "Christopher Ward C60 Trident"),
+        auction("2", "Rolex Submariner homage"),
+        auction("3", "Christopher Ward strap only"),
+        auction("4", "Christopher Ward C65", "DE"),
+      ],
+    }));
+
+    const { items, stats } = await searchAuctions("Christopher Ward Test");
+
+    expect(items.map((item) => item.itemId)).toEqual(["1"]);
+    expect(stats).toEqual({
+      auctionsOnEbay: 4,
+      checked: 4,
+      outsideUk: 1,
+      replicas: 1,
+      junk: 1,
+      shown: 1,
+      buyItNowOnEbay: null,
+    });
+  });
+
+  it("counts Buy It Now listings when there are no auctions", async () => {
+    const searches = fakeEbay((url) =>
+      url.searchParams.get("filter").includes("FIXED_PRICE")
+        ? { total: 37, itemSummaries: [] }
+        : { total: 0 }
+    );
+
+    const { items, stats } = await searchAuctions("Studio Underdog Test");
+
+    expect(items).toEqual([]);
+    expect(stats).toMatchObject({ auctionsOnEbay: 0, shown: 0, buyItNowOnEbay: 37 });
+    expect(searches[1].searchParams.get("filter")).toContain("itemLocationCountry:GB");
   });
 });
