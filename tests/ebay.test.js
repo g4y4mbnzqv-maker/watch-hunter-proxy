@@ -7,13 +7,17 @@ const listing = (title, price) => ({
   itemLocation: { country: "GB" },
 });
 
-// A fake eBay: answers the token request, then whatever the test supplies
+// A fake eBay: answers the token request, turns down the category lookup
+// (tests/category.test.js covers that), then answers whatever the test supplies
 function fakeEbay(respond) {
   const searches = [];
   vi.stubGlobal("fetch", async (input) => {
     const url = new URL(String(input));
     if (url.pathname.includes("oauth2")) {
       return Response.json({ access_token: "token", expires_in: 7200 });
+    }
+    if (url.pathname.includes("taxonomy")) {
+      return new Response("not here", { status: 404 });
     }
     searches.push(url);
     return Response.json(respond(url));
@@ -128,6 +132,7 @@ describe("searchAuctions", () => {
     expect(stats).toEqual({
       auctionsOnEbay: 4,
       checked: 4,
+      notWatches: 0,
       outsideUk: 1,
       replicas: 1,
       junk: 1,

@@ -9,6 +9,7 @@ export default function ScanExplainer({ brand, stats, includeJunk }) {
   })}`;
 
   const dropped = [
+    stats.notWatches > 0 && `${stats.notWatches} weren't watches`,
     stats.replicas > 0 && `${stats.replicas} looked like replicas or homages`,
     stats.junk > 0 && `${stats.junk} were parts, repairs or accessories`,
     stats.outsideUk > 0 && `${stats.outsideUk} weren't in the UK`,
