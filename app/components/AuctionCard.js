@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
 import { baseModel } from "@/lib/models";
 import { cautionWords } from "@/lib/wording";
+import { gradeLabel } from "@/lib/condition";
 
 const STATUS_STYLES = {
   deal: {
@@ -124,6 +125,11 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
                 : `${item.bidCount} ${item.bidCount === 1 ? "bid" : "bids"}`}
             </span>
             {item.condition && <span>· {item.condition}</span>}
+            {item.conditionCheck?.from === "title" && (
+              <span title="eBay's condition doesn't give a grade, so this comes from the title">
+                · title says {gradeLabel(item.conditionCheck.grade).toLowerCase()}
+              </span>
+            )}
           </div>
         </div>
 

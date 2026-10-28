@@ -6,10 +6,12 @@ import SettingsPanel from "./components/SettingsPanel";
 import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import UsageMeter from "./components/UsageMeter";
 import EndingSoon from "./components/EndingSoon";
+import ConditionFilter from "./components/ConditionFilter";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
 import { baseModel } from "@/lib/models";
+import { GRADES, conditionGrade } from "@/lib/condition";
 
 
 const VIEWS = [
@@ -23,6 +25,7 @@ const VIEWS = [
 const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
   "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
+  "conditionId",
 ];
 
 // Label used in place of a brand once a Top deals scan has run
@@ -33,6 +36,9 @@ const TOP_DEALS_CONCURRENCY = 3;
 // Saved auctions with this many minutes left go in the ending-soon banner
 // and, if alerts are on, trigger a notification
 const ENDING_SOON_MINUTES = 10;
+
+const ALL_GRADES = GRADES.map((option) => option.key);
+const GOOD_OR_BETTER = ["new", "excellent", "good"];
 
 // Opening the watchlist refreshes it if the last refresh is older than this
 const WATCHLIST_STALE_MS = 60_000;
@@ -57,6 +63,8 @@ export default function Home() {
   // Resale values typed for a model, by base reference such as SRPD55
   const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
+  // Condition grades to show; every grade by default
+  const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
   const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
   const [mode, setMode] = useState("scan");
   const [refreshing, setRefreshing] = useState(false);
@@ -312,6 +320,7 @@ export default function Home() {
       .map((item) => ({
         ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
+        conditionCheck: conditionGrade(item),
       }))
       .filter((item) => hoursLeft(item.endTime, now) > 0);
     // resaleOverride reads overrides and modelValues
@@ -326,16 +335,25 @@ export default function Home() {
   const overBudgetCount = live.filter(
     (item) => !(hideRisky && item.sellerCheck.level === "risky") && overBudget(item)
   ).length;
+  // Counted after risky sellers and the budget, for the same reason
+  const otherConditionCount = live.filter(
+    (item) =>
+      !(hideRisky && item.sellerCheck.level === "risky") &&
+      !overBudget(item) &&
+      !grades.includes(item.conditionCheck.grade)
+  ).length;
 
   const analysed = useMemo(
     () =>
       live.filter(
         (item) =>
-          !(hideRisky && item.sellerCheck.level === "risky") && !overBudget(item)
+          !(hideRisky && item.sellerCheck.level === "risky") &&
+          !overBudget(item) &&
+          grades.includes(item.conditionCheck.grade)
       ),
     // overBudget reads maxBudget
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [live, hideRisky, maxBudget]
+    [live, hideRisky, maxBudget, grades]
   );
 
   const visible = useMemo(() => {
@@ -371,6 +389,7 @@ export default function Home() {
       .map((item) => ({
         ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
+        conditionCheck: conditionGrade(item),
         ended: item.ended || hoursLeft(item.endTime, now) <= 0,
       }))
       // Live auctions first, ending soonest; then ended ones, latest first
@@ -568,6 +587,12 @@ export default function Home() {
                 Hide risky sellers
               </label>
             </div>
+
+            <ConditionFilter
+              selected={grades}
+              onChange={setGrades}
+              goodOrBetter={GOOD_OR_BETTER}
+            />
           </section>
 
           {error && (
@@ -601,6 +626,8 @@ export default function Home() {
                     hideRisky && riskyCount > 0 && `${riskyCount} from risky sellers`,
                     overBudgetCount > 0 &&
                       `${overBudgetCount} over your ${formatGbp(maxBudget)} limit`,
+                    otherConditionCount > 0 &&
+                      `${otherConditionCount} in other conditions`,
                   ])}
                 />
                 <Stat

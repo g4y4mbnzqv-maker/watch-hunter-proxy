@@ -32,6 +32,7 @@ It then opens full screen from its own icon.
 - `lib/profit.js` turns that into a resale value, profit and the most you can bid. The defaults are a resale value of 85% of the median asking price, 13% selling fees, £5 postage to your buyer and a £30 target profit. You can change all of them under Settings.
 - `lib/wording.js` spots title phrases such as "untested", "sold as seen", "no returns", "needs a service" or "loses time", and the card shows a note to read the listing first.
 - Each card shows the lowest and highest Buy It Now asking prices behind its estimate. A wide spread means the median is a rougher guide.
+- The Condition buttons filter auctions to New, Excellent, Good, Fair or Not graded, and "Good or better only" sets the first three in one tap. `lib/condition.js` uses eBay's own grade where the seller gave one (for example "Pre-owned - Excellent"). Many watches are listed as plain "Pre-owned", which says nothing about quality, so for those it looks for title wording such as "mint" or "very good condition", and the card says the grade came from the title. Anything else counts as Not graded. The filter applies to brand scans and Top deals, not the watchlist.
 - "Maximum spend" in Settings hides auctions already costing more than your limit, including postage. It applies to brand scans and Top deals, but not to the watchlist.
 - `lib/seller.js` checks each seller's eBay feedback. Fewer than 50 ratings or under 98% positive gets a caution flag (both editable in Settings). Fewer than 10 ratings or under 95% positive is marked risky, and risky sellers are hidden unless you untick "Hide risky sellers".
 - "Top deals" scans the popular brands (Seiko, Citizen, Orient, Casio, Swatch, Tissot, Hamilton, Omega, Rolex), three at a time, and shows the combined deals with the highest profit first. Each card is tagged with its brand. If a brand fails, the others still show with a note.
@@ -48,7 +49,7 @@ Each scan makes 1 search call, plus 1 call for each new model reference found (u
 
 ## Tests
 
-`tests/` covers the profit maths, model reference matching, seller ratings, the replica, junk and wording filters, and the eBay comparables and usage logic against a fake eBay. They run with Vitest and don't call eBay.
+`tests/` covers the profit maths, condition grading, model reference matching, seller ratings, the replica, junk and wording filters, and the eBay comparables and usage logic against a fake eBay. They run with Vitest and don't call eBay.
 
 ## Known limits
 
