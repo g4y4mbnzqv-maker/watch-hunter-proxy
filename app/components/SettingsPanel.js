@@ -10,6 +10,12 @@ const FIELDS = [
     help: "A listing counts as a deal once it clears this.",
   },
   {
+    key: "maxBudget",
+    label: "Maximum spend",
+    prefix: "£",
+    help: "Hides auctions already costing more than this, including postage. 0 means no limit.",
+  },
+  {
     key: "resalePercent",
     label: "Expected sale price",
     suffix: "%",
@@ -75,7 +81,7 @@ export default function SettingsPanel({ settings, onChange }) {
 
 function FieldGrid({ fields, settings, onChange }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {fields.map((field) => (
         <label key={field.key} className="block">
           <span className="text-xs font-medium text-zinc-300">

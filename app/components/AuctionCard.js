@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
 import { baseModel } from "@/lib/models";
+import { cautionWords } from "@/lib/wording";
 
 const STATUS_STYLES = {
   deal: {
@@ -128,6 +129,8 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
 
         <SellerLine seller={item.seller} check={item.sellerCheck} />
 
+        <WordingNote title={item.title} />
+
         <dl className="grid grid-cols-3 gap-2 text-center">
           <Figure
             label={ended ? "Last seen" : "Cost now"}
@@ -153,6 +156,8 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
             hint={item.roi === null ? "" : item.roi > 300 ? "300%+ return" : `${item.roi}% return`}
           />
         </dl>
+
+        {item.comps && <PriceRange comps={item.comps} />}
 
         {ended ? (
           <p className="text-xs text-zinc-500">
@@ -192,6 +197,33 @@ function BookmarkIcon({ filled }) {
     >
       <path d="M6 3h12v18l-6-4.5L6 21z" />
     </svg>
+  );
+}
+
+function WordingNote({ title }) {
+  const words = cautionWords(title);
+  if (!words.length) return null;
+
+  return (
+    <div className="rounded-xl bg-amber-950/30 px-3 py-2 text-xs text-amber-300 ring-1 ring-amber-500/30">
+      Read the listing first: it says {words.map((word) => `"${word}"`).join(", ")}
+    </div>
+  );
+}
+
+// Spread of the Buy It Now prices behind the estimate. A wide spread means
+// the median is a rougher guide.
+function PriceRange({ comps }) {
+  const condition = CONDITION_NAMES[comps.condition];
+
+  return (
+    <p className="-mt-1 text-[11px] text-zinc-500">
+      Buy It Now asking prices:{" "}
+      <span className="tabular-nums text-zinc-300">
+        {formatGbp(comps.low)} to {formatGbp(comps.high)}
+      </span>{" "}
+      across {comps.count} {condition ? `${condition} ` : ""}listings
+    </p>
   );
 }
 

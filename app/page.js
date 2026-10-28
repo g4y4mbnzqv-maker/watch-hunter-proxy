@@ -268,10 +268,22 @@ export default function Home() {
 
   const riskyCount = live.filter((item) => item.sellerCheck.level === "risky").length;
 
+  const maxBudget = settings.maxBudget ?? DEFAULT_SETTINGS.maxBudget;
+  const overBudget = (item) => maxBudget > 0 && item.totalCost > maxBudget;
+  // Counted after risky sellers, so no auction is counted twice
+  const overBudgetCount = live.filter(
+    (item) => !(hideRisky && item.sellerCheck.level === "risky") && overBudget(item)
+  ).length;
+
   const analysed = useMemo(
     () =>
-      hideRisky ? live.filter((item) => item.sellerCheck.level !== "risky") : live,
-    [live, hideRisky]
+      live.filter(
+        (item) =>
+          !(hideRisky && item.sellerCheck.level === "risky") && !overBudget(item)
+      ),
+    // overBudget reads maxBudget
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [live, hideRisky, maxBudget]
   );
 
   const visible = useMemo(() => {
@@ -497,11 +509,11 @@ export default function Home() {
                 <Stat
                   label="Auctions found"
                   value={stats.scanned}
-                  note={
-                    hideRisky && riskyCount > 0
-                      ? `${riskyCount} from risky sellers hidden`
-                      : null
-                  }
+                  note={hiddenNote([
+                    hideRisky && riskyCount > 0 && `${riskyCount} from risky sellers`,
+                    overBudgetCount > 0 &&
+                      `${overBudgetCount} over your ${formatGbp(maxBudget)} limit`,
+                  ])}
                 />
                 <Stat
                   label="With a resale estimate"
@@ -673,6 +685,12 @@ function Watchlist({
       </div>
     </section>
   );
+}
+
+// "Hidden: 3 from risky sellers, 2 over your £200 limit", or null
+function hiddenNote(parts) {
+  const text = parts.filter(Boolean).join(", ");
+  return text ? `Hidden: ${text}` : null;
 }
 
 function pick(object, fields) {
