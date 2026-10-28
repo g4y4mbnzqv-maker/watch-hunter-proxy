@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isJunk, isReplica } from "@/lib/ebay";
-import { cautionWords } from "@/lib/wording";
+import { cautionWords, isSpecialEdition } from "@/lib/wording";
 
 describe("isReplica", () => {
   it.each([
@@ -40,5 +40,24 @@ describe("cautionWords", () => {
   it("leaves clean titles alone", () => {
     expect(cautionWords("Seiko SKX007 serviced 2024, runs perfectly")).toEqual([]);
     expect(cautionWords("Seiko 5 runs well, returns accepted")).toEqual([]);
+  });
+});
+
+describe("isSpecialEdition", () => {
+  it.each([
+    "Casio G-Shock x Bamford GM-5600",
+    "CASIO X BAMFORD G-SHOCK",
+    "Seiko Prospex Limited Edition SPB",
+    "Tissot PRX 1 of 500",
+  ])("spots %s", (title) => {
+    expect(isSpecialEdition(title)).toBe(true);
+  });
+
+  it.each([
+    "Seiko SKX007 42 x 12mm diver",
+    "Orient Mako GMT 12/24 hour bezel",
+    "Hamilton Khaki Field Mechanical",
+  ])("leaves %s alone", (title) => {
+    expect(isSpecialEdition(title)).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
+import { analyse, DEFAULT_SETTINGS, roughEstimateReasons } from "@/lib/profit";
 
 const item = { currentBid: 80, postage: 6, comps: { median: 200, count: 8 } };
 
@@ -48,5 +48,32 @@ describe("analyse", () => {
 
   it("treats unknown postage as free", () => {
     expect(analyse({ ...item, postage: null }, DEFAULT_SETTINGS).profit).toBe(62.9);
+  });
+});
+
+describe("rough estimates", () => {
+  const comps = { median: 2000, low: 1500, high: 2500, count: 8 };
+  const bamford = { title: "Casio G-Shock x Bamford GM-5600", currentBid: 120, postage: 5, comps };
+
+  it("won't call a special edition a deal on an estimate alone", () => {
+    const result = analyse(bamford, DEFAULT_SETTINGS);
+    expect(result.status).toBe("check");
+    expect(result.roughReasons).toEqual(["special or limited edition"]);
+  });
+
+  it("trusts your own value", () => {
+    const result = analyse(bamford, DEFAULT_SETTINGS, { value: 400, source: "model" });
+    expect(result.roughReasons).toEqual([]);
+    expect(result.status).toBe("deal");
+  });
+
+  it("flags thin or widely spread comparables", () => {
+    expect(roughEstimateReasons({ title: "Seiko SKX007", comps: { count: 3, low: 200, high: 260 } })).toEqual([
+      "only 3 listings to go on",
+    ]);
+    expect(roughEstimateReasons({ title: "Seiko SKX007", comps: { count: 9, low: 100, high: 400 } })).toEqual([
+      "asking prices vary a lot",
+    ]);
+    expect(roughEstimateReasons({ title: "Seiko SKX007", comps: { count: 9, low: 200, high: 300 } })).toEqual([]);
   });
 });

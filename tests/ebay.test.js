@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { getComparables, getUsage, searchAuctions } from "@/lib/ebay";
+import { getComparables, getUsage, searchAuctions, withoutOutliers } from "@/lib/ebay";
 
 const listing = (title, price) => ({
   title,
@@ -51,7 +51,7 @@ describe("getComparables", () => {
       { itemId: "a", modelRef: "SKX007", conditionGroup: "USED" },
     ]);
 
-    expect(comps.a).toEqual({ median: 270, low: 250, high: 290, count: 3, condition: "USED" });
+    expect(comps.a).toEqual({ median: 270, low: 250, high: 290, count: 3, ignored: 0, condition: "USED" });
     expect(searches[0].searchParams.get("filter")).toContain("itemLocationCountry:GB");
   });
 
@@ -153,5 +153,17 @@ describe("searchAuctions", () => {
     expect(items).toEqual([]);
     expect(stats).toMatchObject({ auctionsOnEbay: 0, shown: 0, buyItNowOnEbay: 37 });
     expect(searches[1].searchParams.get("filter")).toContain("itemLocationCountry:GB");
+  });
+});
+
+describe("withoutOutliers", () => {
+  it("ignores prices far above or below the median", () => {
+    expect(withoutOutliers([150, 180, 200, 210, 230, 2400, 4500])).toEqual([150, 180, 200, 210, 230]);
+    expect(withoutOutliers([20, 180, 200, 210])).toEqual([180, 200, 210]);
+  });
+
+  it("leaves tight or tiny lists alone", () => {
+    expect(withoutOutliers([180, 200, 260])).toEqual([180, 200, 260]);
+    expect(withoutOutliers([100, 900])).toEqual([100, 900]);
   });
 });
