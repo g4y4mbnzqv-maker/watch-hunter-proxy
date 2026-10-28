@@ -4,10 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import AuctionCard from "./components/AuctionCard";
 import SettingsPanel from "./components/SettingsPanel";
 import BrandPicker, { POPULAR } from "./components/BrandPicker";
-import { formatGbp, hoursLeft } from "./components/format";
+import UsageMeter from "./components/UsageMeter";
+import EndingSoon from "./components/EndingSoon";
+import ConditionFilter from "./components/ConditionFilter";
+import ScanExplainer from "./components/ScanExplainer";
+import { formatGbp, formatTimeLeft, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
 import { baseModel } from "@/lib/models";
+import { GRADES, conditionGrade } from "@/lib/condition";
 
 
 const VIEWS = [
@@ -21,12 +26,20 @@ const VIEWS = [
 const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
   "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
+  "conditionId",
 ];
 
 // Label used in place of a brand once a Top deals scan has run
 const TOP_DEALS = "Top deals";
 // Brands scanned at once by Top deals, to stay gentle on the eBay API
 const TOP_DEALS_CONCURRENCY = 3;
+
+// Saved auctions with this many minutes left go in the ending-soon banner
+// and, if alerts are on, trigger a notification
+const ENDING_SOON_MINUTES = 10;
+
+const ALL_GRADES = GRADES.map((option) => option.key);
+const GOOD_OR_BETTER = ["new", "excellent", "good"];
 
 // Opening the watchlist refreshes it if the last refresh is older than this
 const WATCHLIST_STALE_MS = 60_000;
@@ -43,6 +56,8 @@ export default function Home() {
   const [includeJunk, setIncludeJunk] = useState(false);
   const [results, setResults] = useState([]);
   const [scannedBrand, setScannedBrand] = useState(null);
+  // What eBay returned for the last single-brand scan, to explain empty ones
+  const [scanStats, setScanStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [settings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
@@ -51,6 +66,8 @@ export default function Home() {
   // Resale values typed for a model, by base reference such as SRPD55
   const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
+  // Condition grades to show; every grade by default
+  const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
   const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
   const [mode, setMode] = useState("scan");
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +78,50 @@ export default function Home() {
   const [topFailures, setTopFailures] = useState([]);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
+  const [usage, setUsage] = useState(null);
+  const [alertsOn, setAlertsOn] = useStoredState("wh-alerts", false);
+  // Item IDs already notified, so each auction alerts once
+  const [alerted, setAlerted] = useStoredState("wh-alerted", {});
+  const [alertNote, setAlertNote] = useState(null);
   const now = useNow(30_000);
+
+  // The meter is a nice-to-have, so any failure just hides it
+  async function refreshUsage() {
+    try {
+      const res = await fetch("/api/usage");
+      const data = await res.json();
+      setUsage(res.ok && !data.error ? data.usage : null);
+    } catch {
+      setUsage(null);
+    }
+  }
+
+  useEffect(() => {
+    refreshUsage();
+    // Phones need a service worker to show notifications
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+  }, []);
+
+  async function enableAlerts() {
+    if (!("Notification" in window)) {
+      setAlertNote(
+        "This browser can't show alerts. Auctions ending soon will still appear at the top of the page."
+      );
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setAlertsOn(true);
+      setAlertNote(null);
+    } else {
+      setAlertNote(
+        "Notifications are blocked for this site. Allow them in your browser settings to get alerts."
+      );
+    }
+  }
 
   async function fetchBrand(query) {
     const params = new URLSearchParams({ brand: query });
@@ -74,7 +134,7 @@ export default function Home() {
       throw new Error(data.message || `Scan failed (${res.status})`);
     }
 
-    return data.results;
+    return data;
   }
 
   async function scan(searchBrand = brand) {
@@ -87,7 +147,10 @@ export default function Home() {
     setTopFailures([]);
 
     try {
-      setResults(await fetchBrand(query));
+      const data = await fetchBrand(query);
+      setResults(data.results);
+      setScanStats(data.stats ?? null);
+      refreshUsage();
       setScannedBrand(query);
     } catch (err) {
       console.error(err);
@@ -115,7 +178,7 @@ export default function Home() {
       await Promise.all(
         batch.map(async (name) => {
           try {
-            for (const item of await fetchBrand(name)) {
+            for (const item of (await fetchBrand(name)).results) {
               // A listing can match two brands, such as Seiko and Grand Seiko
               if (!combined.has(item.itemId)) {
                 combined.set(item.itemId, { ...item, brand: name });
@@ -138,12 +201,14 @@ export default function Home() {
     } else {
       setResults([...combined.values()]);
       setScannedBrand(TOP_DEALS);
+      setScanStats(null);
       setTopFailures(failures.map((failure) => failure.name));
       setView("deals");
       setSort("profit");
     }
 
     setTopProgress(null);
+    refreshUsage();
     setLoading(false);
   }
 
@@ -193,6 +258,7 @@ export default function Home() {
         return next;
       });
       setRefreshedAt(Date.now());
+      refreshUsage();
     } catch (err) {
       console.error(err);
       setRefreshError(err.message);
@@ -260,6 +326,7 @@ export default function Home() {
       .map((item) => ({
         ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
+        conditionCheck: conditionGrade(item),
       }))
       .filter((item) => hoursLeft(item.endTime, now) > 0);
     // resaleOverride reads overrides and modelValues
@@ -274,16 +341,25 @@ export default function Home() {
   const overBudgetCount = live.filter(
     (item) => !(hideRisky && item.sellerCheck.level === "risky") && overBudget(item)
   ).length;
+  // Counted after risky sellers and the budget, for the same reason
+  const otherConditionCount = live.filter(
+    (item) =>
+      !(hideRisky && item.sellerCheck.level === "risky") &&
+      !overBudget(item) &&
+      !grades.includes(item.conditionCheck.grade)
+  ).length;
 
   const analysed = useMemo(
     () =>
       live.filter(
         (item) =>
-          !(hideRisky && item.sellerCheck.level === "risky") && !overBudget(item)
+          !(hideRisky && item.sellerCheck.level === "risky") &&
+          !overBudget(item) &&
+          grades.includes(item.conditionCheck.grade)
       ),
     // overBudget reads maxBudget
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [live, hideRisky, maxBudget]
+    [live, hideRisky, maxBudget, grades]
   );
 
   const visible = useMemo(() => {
@@ -319,6 +395,7 @@ export default function Home() {
       .map((item) => ({
         ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
+        conditionCheck: conditionGrade(item),
         ended: item.ended || hoursLeft(item.endTime, now) <= 0,
       }))
       // Live auctions first, ending soonest; then ended ones, latest first
@@ -334,6 +411,33 @@ export default function Home() {
 
   const endedCount = watched.filter((item) => item.ended).length;
 
+  const endingSoon = watched.filter(
+    (item) => !item.ended && hoursLeft(item.endTime, now) * 60 <= ENDING_SOON_MINUTES
+  );
+
+  useEffect(() => {
+    if (!alertsOn || !("Notification" in window) || Notification.permission !== "granted") {
+      return;
+    }
+
+    const fresh = endingSoon.filter((item) => !alerted[item.itemId]);
+    if (!fresh.length) return;
+
+    fresh.forEach((item) => notify(item, now));
+    setAlerted((current) => {
+      // Forget auctions no longer on the watchlist so the list stays small
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([itemId]) => watchlist[itemId])
+      );
+      fresh.forEach((item) => {
+        next[item.itemId] = true;
+      });
+      return next;
+    });
+    // endingSoon is rebuilt from watched and now on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alertsOn, watched, now]);
+
   const counts = {
     deals: stats.deals,
     soon: analysed.filter((item) => hoursLeft(item.endTime, now) < 6).length,
@@ -341,7 +445,7 @@ export default function Home() {
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6">
+    <main className="mx-auto max-w-6xl px-4 pb-16 pt-[max(2rem,env(safe-area-inset-top))] sm:px-6">
       <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
@@ -351,17 +455,20 @@ export default function Home() {
             eBay UK watch auctions you can resell at a profit
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowSettings((open) => !open)}
-          className={`rounded-xl px-4 py-2 text-sm ring-1 transition ${
-            showSettings
-              ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-              : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
-          }`}
-        >
-          Settings
-        </button>
+        <div className="flex items-end gap-4">
+          <UsageMeter usage={usage} />
+          <button
+            type="button"
+            onClick={() => setShowSettings((open) => !open)}
+            className={`rounded-xl px-4 py-2 text-sm ring-1 transition ${
+              showSettings
+                ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
+                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+            }`}
+          >
+            Settings
+          </button>
+        </div>
       </header>
 
       <nav className="mb-6 flex w-fit rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
@@ -387,6 +494,8 @@ export default function Home() {
         ))}
       </nav>
 
+      <EndingSoon items={endingSoon} now={now} />
+
       {showSettings && (
         <div className="mb-6">
           <SettingsPanel
@@ -409,6 +518,10 @@ export default function Home() {
           onToggleSave={toggleSave}
           onSetResale={setResale}
           onFindDeals={() => setMode("scan")}
+          alertsOn={alertsOn}
+          alertNote={alertNote}
+          onEnableAlerts={enableAlerts}
+          onDisableAlerts={() => setAlertsOn(false)}
         />
       )}
 
@@ -480,6 +593,12 @@ export default function Home() {
                 Hide risky sellers
               </label>
             </div>
+
+            <ConditionFilter
+              selected={grades}
+              onChange={setGrades}
+              goodOrBetter={GOOD_OR_BETTER}
+            />
           </section>
 
           {error && (
@@ -503,7 +622,11 @@ export default function Home() {
             </div>
           )}
 
-          {!loading && scannedBrand && !error && (
+          {!loading && scannedBrand && !error && results.length === 0 && scanStats && (
+            <ScanExplainer brand={scannedBrand} stats={scanStats} includeJunk={includeJunk} />
+          )}
+
+          {!loading && scannedBrand && !error && !(results.length === 0 && scanStats) && (
             <>
               <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Stat
@@ -513,6 +636,8 @@ export default function Home() {
                     hideRisky && riskyCount > 0 && `${riskyCount} from risky sellers`,
                     overBudgetCount > 0 &&
                       `${overBudgetCount} over your ${formatGbp(maxBudget)} limit`,
+                    otherConditionCount > 0 &&
+                      `${otherConditionCount} in other conditions`,
                   ])}
                 />
                 <Stat
@@ -612,6 +737,10 @@ function Watchlist({
   onToggleSave,
   onSetResale,
   onFindDeals,
+  alertsOn,
+  alertNote,
+  onEnableAlerts,
+  onDisableAlerts,
 }) {
   if (!items.length) {
     return (
@@ -644,7 +773,19 @@ function Watchlist({
               })}`
             : "Showing bids from when you saved each auction"}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={alertsOn ? onDisableAlerts : onEnableAlerts}
+            aria-pressed={alertsOn}
+            className={`rounded-xl px-3 py-2 text-sm ring-1 transition ${
+              alertsOn
+                ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/50"
+                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+            }`}
+          >
+            {alertsOn ? "Alerts on" : "Alert me 10 min before"}
+          </button>
           {endedCount > 0 && (
             <button
               type="button"
@@ -664,6 +805,12 @@ function Watchlist({
           </button>
         </div>
       </div>
+
+      {alertNote && (
+        <div className="mb-5 rounded-2xl bg-amber-950/30 p-4 text-sm text-amber-200 ring-1 ring-amber-500/30">
+          {alertNote}
+        </div>
+      )}
 
       {refreshError && (
         <div className="mb-5 rounded-2xl bg-rose-950/40 p-4 text-sm text-rose-200 ring-1 ring-rose-500/40">
@@ -691,6 +838,33 @@ function Watchlist({
 function hiddenNote(parts) {
   const text = parts.filter(Boolean).join(", ");
   return text ? `Hidden: ${text}` : null;
+}
+
+// Shows a notification through the service worker where there is one, as
+// Android requires, or straight from the page otherwise
+async function notify(item, now) {
+  const title = `Ends in ${formatTimeLeft(item.endTime, now)}: ${item.title}`;
+  const options = {
+    body:
+      item.maxBid !== null
+        ? `Now ${formatGbp(item.totalCost)}. Bid up to ${formatGbp(item.maxBid)}.`
+        : `Now ${formatGbp(item.totalCost)}.`,
+    tag: item.itemId,
+    icon: "/icons/icon-192.png",
+    data: { url: item.url },
+  };
+
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration();
+    if (registration) {
+      await registration.showNotification(title, options);
+    } else {
+      new Notification(title, options);
+    }
+  } catch (err) {
+    // The banner still shows the auction
+    console.error(err);
+  }
 }
 
 function pick(object, fields) {
