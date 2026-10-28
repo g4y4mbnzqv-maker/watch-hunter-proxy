@@ -8,16 +8,18 @@ import UsageMeter from "./components/UsageMeter";
 import EndingSoon from "./components/EndingSoon";
 import ConditionFilter from "./components/ConditionFilter";
 import ScanExplainer from "./components/ScanExplainer";
+import ListingTypeFilter, { LISTING_TYPES } from "./components/ListingTypeFilter";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./components/format";
 import { analyse, DEFAULT_SETTINGS } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
-import { baseModel } from "@/lib/models";
+import { modelKey } from "@/lib/models";
 import { GRADES, conditionGrade } from "@/lib/condition";
 
 
 const VIEWS = [
   { key: "deals", label: "Deals" },
   { key: "soon", label: "Ending in 6h" },
+  { key: "bin", label: "Buy It Now" },
   { key: "all", label: "Everything" },
 ];
 
@@ -26,7 +28,7 @@ const VIEWS = [
 const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
   "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
-  "conditionId",
+  "conditionId", "images", "listingType", "bestOffer", "modelName",
 ];
 
 // Label used in place of a brand once a Top deals scan has run
@@ -43,6 +45,8 @@ const GOOD_OR_BETTER = ["new", "excellent", "good"];
 
 // Opening the watchlist refreshes it if the last refresh is older than this
 const WATCHLIST_STALE_MS = 60_000;
+
+const ALL_LISTING_TYPES = LISTING_TYPES.map((option) => option.key);
 
 const SORTS = [
   { key: "ending", label: "Ending soonest" },
@@ -68,6 +72,8 @@ export default function Home() {
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
   // Condition grades to show; every grade by default
   const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
+  // Auctions, Buy It Now or both; both by default
+  const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES);
   const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
   const [mode, setMode] = useState("scan");
   const [refreshing, setRefreshing] = useState(false);
@@ -124,7 +130,7 @@ export default function Home() {
   }
 
   async function fetchBrand(query) {
-    const params = new URLSearchParams({ brand: query });
+    const params = new URLSearchParams({ brand: query, types: listingTypes.join(",") });
     if (includeJunk) params.set("includeJunk", "1");
 
     const res = await fetch(`/api/scan?${params}`);
@@ -271,7 +277,7 @@ export default function Home() {
     setWatchlist((current) =>
       Object.fromEntries(
         Object.entries(current).filter(
-          ([, item]) => !item.ended && hoursLeft(item.endTime, Date.now()) > 0
+          ([, item]) => !item.ended && isLive(item, Date.now())
         )
       )
     );
@@ -285,8 +291,8 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode]);
 
-  // A value typed on a card with a model reference applies to every listing
-  // of that model; without a reference it applies to that listing only
+  // A value typed on a card with a model reference or name applies to every
+  // listing of that model; otherwise it applies to that listing only
   function setResale(item, value) {
     const update = (key) => (current) => {
       const next = { ...current };
@@ -295,8 +301,9 @@ export default function Home() {
       return next;
     };
 
-    if (item.modelRef) {
-      setModelValues(update(baseModel(item.modelRef)));
+    const key = modelKey(item);
+    if (key) {
+      setModelValues(update(key));
       // Drop any older value for this listing so the model value shows
       setOverrides((current) => {
         const next = { ...current };
@@ -312,7 +319,8 @@ export default function Home() {
     if (overrides[item.itemId] !== undefined) {
       return { value: overrides[item.itemId], source: "listing" };
     }
-    const model = item.modelRef && modelValues[baseModel(item.modelRef)];
+    const key = modelKey(item);
+    const model = key && modelValues[key];
     if (model !== undefined && model !== null && model !== "") {
       return { value: model, source: "model" };
     }
@@ -328,7 +336,7 @@ export default function Home() {
         sellerCheck: assessSeller(item.seller, merged),
         conditionCheck: conditionGrade(item),
       }))
-      .filter((item) => hoursLeft(item.endTime, now) > 0);
+      .filter((item) => isLive(item, now));
     // resaleOverride reads overrides and modelValues
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [results, settings, overrides, modelValues, now]);
@@ -365,7 +373,8 @@ export default function Home() {
   const visible = useMemo(() => {
     const filtered = analysed.filter((item) => {
       if (view === "deals") return item.status === "deal";
-      if (view === "soon") return hoursLeft(item.endTime, now) < 6;
+      if (view === "soon") return endsWithin(item, now, 6);
+      if (view === "bin") return item.listingType === "BUY_IT_NOW";
       return true;
     });
 
@@ -397,15 +406,11 @@ export default function Home() {
         ...analyse(item, merged, resaleOverride(item)),
         sellerCheck: assessSeller(item.seller, merged),
         conditionCheck: conditionGrade(item),
-        ended: item.ended || hoursLeft(item.endTime, now) <= 0,
+        ended: item.ended || !isLive(item, now),
       }))
-      // Live auctions first, ending soonest; then ended ones, latest first
+      // Live listings first, ending soonest; then ended ones, latest first
       .sort((a, b) =>
-        a.ended !== b.ended
-          ? a.ended - b.ended
-          : a.ended
-          ? new Date(b.endTime) - new Date(a.endTime)
-          : new Date(a.endTime) - new Date(b.endTime)
+        a.ended !== b.ended ? a.ended - b.ended : a.ended ? -SORTERS.ending(a, b) : SORTERS.ending(a, b)
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [watchlist, settings, overrides, modelValues, now]);
@@ -413,7 +418,7 @@ export default function Home() {
   const endedCount = watched.filter((item) => item.ended).length;
 
   const endingSoon = watched.filter(
-    (item) => !item.ended && hoursLeft(item.endTime, now) * 60 <= ENDING_SOON_MINUTES
+    (item) => !item.ended && endsWithin(item, now, ENDING_SOON_MINUTES / 60)
   );
 
   useEffect(() => {
@@ -441,59 +446,72 @@ export default function Home() {
 
   const counts = {
     deals: stats.deals,
-    soon: analysed.filter((item) => hoursLeft(item.endTime, now) < 6).length,
+    soon: analysed.filter((item) => endsWithin(item, now, 6)).length,
+    bin: analysed.filter((item) => item.listingType === "BUY_IT_NOW").length,
     all: analysed.length,
   };
 
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-16 pt-[max(2rem,env(safe-area-inset-top))] sm:px-6">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-            Watch Hunter
-          </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            eBay UK watch auctions you can resell at a profit
-          </p>
+    <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+      {/* Soft glow behind the top of the page */}
+      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.20),transparent)]" />
+
+      {/* The shadow paints the bar's background out to both screen edges
+          without the page needing to scroll sideways */}
+      <header className="sticky top-0 z-30 mb-6 bg-zinc-950/80 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] shadow-[0_0_0_100vmax_rgba(9,9,11,0.8),0_1px_0_100vmax_rgba(255,255,255,0.05)] backdrop-blur-xl [clip-path:inset(0_-100vmax)]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+          <div className="flex items-center gap-2.5">
+            <img src="/icons/icon-192.png" alt="" className="h-8 w-8 rounded-xl ring-1 ring-white/10" />
+            <span className="text-lg font-semibold tracking-tight text-white">Watch Hunter</span>
+          </div>
+
+          <nav className="order-last flex w-full rounded-full bg-white/5 p-1 ring-1 ring-white/10 sm:order-none sm:ml-4 sm:w-auto">
+            {[
+              { key: "scan", label: "Find deals" },
+              { key: "watchlist", label: "Watchlist", count: watched.length },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setMode(tab.key)}
+                className={`flex-1 rounded-full px-4 py-1.5 text-sm font-medium transition sm:flex-none ${
+                  mode === tab.key
+                    ? "bg-white text-zinc-950 shadow"
+                    : "text-zinc-400 hover:text-zinc-100"
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && (
+                  <span className="ml-1.5 tabular-nums opacity-60">{tab.count}</span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-3">
+            <div className="hidden sm:block">
+              <UsageMeter usage={usage} />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSettings((open) => !open)}
+              aria-pressed={showSettings}
+              aria-label="Settings"
+              title="Settings"
+              className={`flex h-9 w-9 items-center justify-center rounded-full ring-1 transition ${
+                showSettings
+                  ? "bg-white text-zinc-950 ring-white"
+                  : "text-zinc-300 ring-white/15 hover:bg-white/5"
+              }`}
+            >
+              <SettingsIcon />
+            </button>
+          </div>
         </div>
-        <div className="flex items-end gap-4">
+        <div className="mt-3 sm:hidden">
           <UsageMeter usage={usage} />
-          <button
-            type="button"
-            onClick={() => setShowSettings((open) => !open)}
-            className={`rounded-xl px-4 py-2 text-sm ring-1 transition ${
-              showSettings
-                ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
-            }`}
-          >
-            Settings
-          </button>
         </div>
       </header>
-
-      <nav className="mb-6 flex w-fit rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
-        {[
-          { key: "scan", label: "Find deals" },
-          { key: "watchlist", label: "Watchlist", count: watched.length },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setMode(tab.key)}
-            className={`rounded-lg px-4 py-2 text-sm transition ${
-              mode === tab.key
-                ? "bg-zinc-100 text-zinc-950"
-                : "text-zinc-400 hover:text-zinc-200"
-            }`}
-          >
-            {tab.label}
-            {tab.count !== undefined && (
-              <span className="ml-1.5 tabular-nums opacity-60">{tab.count}</span>
-            )}
-          </button>
-        ))}
-      </nav>
 
       <EndingSoon items={endingSoon} now={now} />
 
@@ -528,7 +546,19 @@ export default function Home() {
 
       {mode === "scan" && (
         <>
-          <section className="mb-6 rounded-2xl bg-zinc-900 p-4 ring-1 ring-zinc-800 sm:p-5">
+          {!scannedBrand && !loading && (
+            <div className="mb-6 mt-2 sm:mt-6">
+              <h1 className="bg-gradient-to-br from-white via-white to-emerald-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
+                Find watches worth flipping
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-zinc-400 sm:text-base">
+                UK auctions and Buy It Now listings priced below what they resell for, after fees
+                and postage.
+              </p>
+            </div>
+          )}
+
+          <section className="mb-6 rounded-3xl bg-zinc-900/60 p-4 ring-1 ring-white/5 backdrop-blur sm:p-5">
             <form
               className="flex flex-col gap-3 sm:flex-row"
               onSubmit={(e) => {
@@ -536,16 +566,19 @@ export default function Home() {
                 scan();
               }}
             >
-              <input
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className="flex-1 rounded-xl bg-zinc-800 px-4 py-3 text-zinc-100 outline-none ring-1 ring-zinc-700 placeholder:text-zinc-500 focus:ring-emerald-500"
-                placeholder="Brand or model, such as Seiko SKX007"
-              />
+              <div className="relative flex-1">
+                <SearchIcon />
+                <input
+                  value={brand}
+                  onChange={(e) => setBrand(e.target.value)}
+                  className="w-full rounded-2xl bg-black/30 py-3.5 pl-11 pr-4 text-zinc-50 outline-none ring-1 ring-white/10 transition placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/70"
+                  placeholder="Brand or model, such as Seiko SKX007"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-xl bg-emerald-500 px-6 py-3 font-medium text-emerald-950 transition hover:bg-emerald-400 disabled:opacity-60"
+                className="rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-6 py-3.5 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/20 transition hover:brightness-110 disabled:opacity-60"
               >
                 {loading && !topProgress ? "Scanning…" : "Find deals"}
               </button>
@@ -554,7 +587,7 @@ export default function Home() {
                 onClick={scanTopDeals}
                 disabled={loading}
                 title={`Scan ${POPULAR.join(", ")} and show the best deals across all of them`}
-                className="rounded-xl px-5 py-3 font-medium text-emerald-400 ring-1 ring-emerald-500/60 transition hover:bg-emerald-500/10 disabled:opacity-60"
+                className="rounded-2xl px-5 py-3.5 font-semibold text-emerald-300 ring-1 ring-emerald-400/40 transition hover:bg-emerald-400/10 disabled:opacity-60"
               >
                 {topProgress
                   ? `Scanning ${topProgress.done}/${topProgress.total}…`
@@ -570,7 +603,7 @@ export default function Home() {
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-zinc-800 pt-4">
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 pt-4">
               <span className="flex items-center gap-1.5 text-xs text-zinc-400">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 Watches located in the UK
@@ -593,6 +626,10 @@ export default function Home() {
                 />
                 Hide risky sellers
               </label>
+            </div>
+
+            <div className="mt-3">
+              <ListingTypeFilter selected={listingTypes} onChange={setListingTypes} />
             </div>
 
             <ConditionFilter
@@ -624,14 +661,19 @@ export default function Home() {
           )}
 
           {!loading && scannedBrand && !error && results.length === 0 && scanStats && (
-            <ScanExplainer brand={scannedBrand} stats={scanStats} includeJunk={includeJunk} />
+            <ScanExplainer
+              brand={scannedBrand}
+              stats={scanStats}
+              includeJunk={includeJunk}
+              includesBuyItNow={listingTypes.includes("BUY_IT_NOW")}
+            />
           )}
 
           {!loading && scannedBrand && !error && !(results.length === 0 && scanStats) && (
             <>
               <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <Stat
-                  label="Auctions found"
+                  label="Listings found"
                   value={stats.scanned}
                   note={hiddenNote([
                     hideRisky && riskyCount > 0 && `${riskyCount} from risky sellers`,
@@ -651,23 +693,23 @@ export default function Home() {
                   accent={stats.deals > 0}
                 />
                 <Stat
-                  label="Best profit at current bid"
+                  label="Best profit"
                   value={formatGbp(stats.best)}
                   accent={stats.best !== null && stats.best > 0}
                 />
               </section>
 
               <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex rounded-xl bg-zinc-900 p-1 ring-1 ring-zinc-800">
+                <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1">
                   {VIEWS.map((option) => (
                     <button
                       key={option.key}
                       type="button"
                       onClick={() => setView(option.key)}
-                      className={`rounded-lg px-3 py-1.5 text-sm transition ${
+                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition ${
                         view === option.key
-                          ? "bg-zinc-100 text-zinc-950"
-                          : "text-zinc-400 hover:text-zinc-200"
+                          ? "bg-white text-zinc-950 ring-white"
+                          : "text-zinc-400 ring-white/10 hover:text-zinc-100"
                       }`}
                     >
                       {option.label}
@@ -681,7 +723,7 @@ export default function Home() {
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
-                  className="rounded-xl bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none ring-1 ring-zinc-800"
+                  className="rounded-full bg-zinc-900/80 px-3.5 py-1.5 text-sm text-zinc-200 outline-none ring-1 ring-white/10"
                 >
                   {SORTS.map((option) => (
                     <option key={option.key} value={option.key}>
@@ -723,8 +765,22 @@ const SORTERS = {
   headroom: (a, b) =>
     (b.maxBid === null ? -Infinity : b.maxBid - b.currentBid) -
     (a.maxBid === null ? -Infinity : a.maxBid - a.currentBid),
-  ending: (a, b) => new Date(a.endTime) - new Date(b.endTime),
+  // Buy It Now listings have no end time, so they go after every auction
+  ending: (a, b) => endMs(a) - endMs(b),
 };
+
+function endMs(item) {
+  return item.endTime ? new Date(item.endTime).getTime() : Infinity;
+}
+
+// Buy It Now listings stay live until eBay stops returning them
+function isLive(item, now) {
+  return item.listingType === "BUY_IT_NOW" || hoursLeft(item.endTime, now) > 0;
+}
+
+function endsWithin(item, now, hours) {
+  return item.listingType !== "BUY_IT_NOW" && hoursLeft(item.endTime, now) < hours;
+}
 
 function Watchlist({
   items,
@@ -745,7 +801,7 @@ function Watchlist({
 }) {
   if (!items.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-12 text-center">
+      <div className="rounded-3xl border border-dashed border-white/10 bg-zinc-900/30 px-6 py-12 text-center">
         <p className="text-sm text-zinc-300">Your watchlist is empty.</p>
         <p className="mt-1 text-xs text-zinc-500">
           Tap the bookmark on any auction to save it here.
@@ -779,10 +835,10 @@ function Watchlist({
             type="button"
             onClick={alertsOn ? onDisableAlerts : onEnableAlerts}
             aria-pressed={alertsOn}
-            className={`rounded-xl px-3 py-2 text-sm ring-1 transition ${
+            className={`rounded-full px-3.5 py-2 text-sm font-medium ring-1 transition ${
               alertsOn
-                ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/50"
-                : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+                ? "bg-emerald-400/15 text-emerald-300 ring-emerald-400/40"
+                : "text-zinc-300 ring-white/10 hover:bg-white/5"
             }`}
           >
             {alertsOn ? "Alerts on" : "Alert me 10 min before"}
@@ -791,7 +847,7 @@ function Watchlist({
             <button
               type="button"
               onClick={onClearEnded}
-              className="rounded-xl px-3 py-2 text-sm text-zinc-300 ring-1 ring-zinc-700 hover:ring-zinc-500"
+              className="rounded-full px-3.5 py-2 text-sm font-medium text-zinc-300 ring-1 ring-white/10 hover:bg-white/5"
             >
               Clear {endedCount} ended
             </button>
@@ -800,7 +856,7 @@ function Watchlist({
             type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="rounded-xl bg-zinc-100 px-3 py-2 text-sm font-medium text-zinc-950 transition hover:bg-white disabled:opacity-60"
+            className="rounded-full bg-white px-3.5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
           >
             {refreshing ? "Refreshing…" : "Refresh bids"}
           </button>
@@ -868,6 +924,32 @@ async function notify(item, now) {
   }
 }
 
+function SearchIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+    >
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" strokeLinecap="round" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="10" cy="17" r="2" />
+    </svg>
+  );
+}
+
 function pick(object, fields) {
   return Object.fromEntries(
     fields.filter((field) => field in object).map((field) => [field, object[field]])
@@ -876,11 +958,17 @@ function pick(object, fields) {
 
 function Stat({ label, value, note, accent = false }) {
   return (
-    <div className="rounded-2xl bg-zinc-900 px-4 py-3 ring-1 ring-zinc-800">
-      <div className="text-xs text-zinc-400">{label}</div>
+    <div
+      className={`rounded-2xl px-4 py-3.5 ring-1 backdrop-blur ${
+        accent
+          ? "bg-gradient-to-br from-emerald-400/15 to-teal-300/5 ring-emerald-400/25"
+          : "bg-zinc-900/60 ring-white/5"
+      }`}
+    >
+      <div className="text-[11px] font-medium uppercase tracking-widest text-zinc-400">{label}</div>
       <div
-        className={`mt-1 text-2xl font-semibold tabular-nums ${
-          accent ? "text-emerald-400" : "text-zinc-100"
+        className={`mt-1 text-3xl font-bold tracking-tight tabular-nums ${
+          accent ? "text-emerald-300" : "text-zinc-50"
         }`}
       >
         {value}
@@ -892,11 +980,11 @@ function Stat({ label, value, note, accent = false }) {
 
 function EmptyView({ view, onShowAll }) {
   return (
-    <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-12 text-center">
+    <div className="rounded-3xl border border-dashed border-white/10 bg-zinc-900/30 px-6 py-12 text-center">
       <p className="text-sm text-zinc-300">
         {view === "deals"
           ? "Nothing clears your target profit right now."
-          : "No auctions match this view."}
+          : "No listings match this view."}
       </p>
       <p className="mt-1 text-xs text-zinc-500">
         {view === "deals"
@@ -920,15 +1008,15 @@ function Intro() {
   const steps = [
     {
       title: "Scan a brand",
-      body: "Pulls live auctions for watches located in the UK, ending soonest first, with parts and accessories filtered out.",
+      body: "Pulls live UK auctions and Buy It Now listings, with parts, replicas and risky sellers filtered out.",
     },
     {
       title: "Estimate resale",
-      body: "Looks up current Buy It Now prices for the same model reference and takes the median.",
+      body: "Compares current asking prices for the same model, matched by reference or by well-known names like Turtle or Black Bay.",
     },
     {
       title: "Bid to your limit",
-      body: "Each card shows profit after fees and postage, and the most you can bid to still hit your target.",
+      body: "Each card shows profit after fees and postage, and the most you can bid or offer to still hit your target.",
     },
   ];
 
@@ -937,9 +1025,9 @@ function Intro() {
       {steps.map((step, index) => (
         <div
           key={step.title}
-          className="rounded-2xl bg-zinc-900 p-5 ring-1 ring-zinc-800"
+          className="rounded-3xl bg-zinc-900/60 p-5 ring-1 ring-white/5 backdrop-blur"
         >
-          <div className="mb-3 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/15 text-sm font-medium text-emerald-400">
+          <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-teal-300 text-sm font-bold text-emerald-950">
             {index + 1}
           </div>
           <h2 className="text-sm font-medium text-zinc-100">{step.title}</h2>
@@ -958,9 +1046,9 @@ function LoadingGrid() {
       {Array.from({ length: 6 }, (_, index) => (
         <div
           key={index}
-          className="animate-pulse overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-zinc-800"
+          className="animate-pulse overflow-hidden rounded-3xl bg-zinc-900/60 ring-1 ring-white/5"
         >
-          <div className="aspect-[16/10] bg-zinc-800 sm:aspect-[4/3]" />
+          <div className="aspect-[16/11] bg-zinc-800/80" />
           <div className="space-y-3 p-4">
             <div className="h-3 w-4/5 rounded bg-zinc-800" />
             <div className="h-3 w-2/5 rounded bg-zinc-800" />

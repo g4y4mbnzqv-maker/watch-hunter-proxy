@@ -1,6 +1,6 @@
 # Watch Hunter
 
-Scans eBay UK auctions for a watch brand and ranks them by estimated margin and time left.
+Scans eBay UK auctions and Buy It Now listings for a watch brand and shows which ones you could resell at a profit.
 
 ## Setup
 
@@ -26,9 +26,11 @@ It then opens full screen from its own icon.
 ## How it works
 
 - `lib/ebay.js` gets an application token from eBay (client credentials, cached until it expires) and calls the Browse API for auctions on EBAY_GB, sorted by ending soonest. Only watches located in the UK are included, for both auctions and the Buy It Now prices used to estimate resale (`itemLocationCountry:GB`).
+- "Show" picks auctions, Buy It Now listings or both (both by default). Buy It Now results are newest first, since underpriced ones rarely last, and profit is worked out at the listed price. Where the seller accepts offers and the price is too high, the card says the most to offer. Buy It Now listings have no countdown, sit in their own view, and stay out of "Ending in 6h" and ending-soon alerts. Searching both uses one extra search call per scan, plus resale lookups for any new models it finds.
 - Every search is limited to eBay UK's Wristwatches category, so "Omega" doesn't bring up Vauxhall Omega parts and "Casio" doesn't bring up keyboards. The category ID is looked up through eBay's Taxonomy API (cached for a day) rather than hard-coded. As a backup, any listing eBay files under no watch category at all is dropped. Pocket watches sit in a different category and don't appear.
 - Listings whose titles mention parts, repairs, straps, empty boxes and similar are dropped unless "Include parts and repairs" is ticked.
 - Replicas and lookalikes ("homage", "replica", "fake", "clone", "1:1", "Rolex style", "Submariner-inspired" and similar) are always dropped, from auctions and from the prices used for resale estimates.
+- When a title has no reference, `lib/nicknames.js` looks for a well-known model name with its brand, such as "Seiko Turtle", "Casio Royal Oak", "Omega Moonwatch" or "Tudor Black Bay", and resale is estimated from other listings known by the same name alone. The card says when prices were matched by name. Values you type on these cards are saved for the model name.
 - `lib/models.js` pulls a model reference (SKX007, 6139-6002, CA0695-84E and so on) out of each title. For each reference, the app looks up current Buy It Now listings in the same condition as the auction (new or pre-owned) and takes the median asking price. If fewer than 3 listings match the condition, it falls back to listings in any condition, and the card says which it used. A reference needs at least 3 matching listings to get an estimate. These lookups are cached for an hour.
 - `lib/profit.js` turns that into a resale value, profit and the most you can bid. The defaults are a resale value of 85% of the median asking price, 13% selling fees, £5 postage to your buyer and a £30 target profit. You can change all of them under Settings.
 - `lib/wording.js` spots title phrases such as "untested", "sold as seen", "no returns", "needs a service" or "loses time", and the card shows a note to read the listing first.
@@ -41,6 +43,7 @@ It then opens full screen from its own icon.
 - The bookmark on each card saves the auction to your watchlist. Opening the watchlist refreshes saved auctions from eBay (one call per auction, at most once a minute unless you press "Refresh bids"). Auctions eBay no longer returns are marked as ended and can be cleared in one go.
 - Saved auctions with 10 minutes or less left appear in a banner at the top of the page. "Alert me 10 min before" on the watchlist also sends a notification for each one, once. Alerts only fire while the app is open, because there is no server sending them; a phone that has put the app to sleep won't get them. `public/sw.js` exists only so Android can show notifications and caches nothing.
 - The meter in the header shows how many Browse API calls this app has used against eBay's limit, read from eBay's Developer Analytics API. It turns amber at 80% and red at 95%.
+- Tap a card's photo to open every photo in the listing full screen, with arrows, swiping, thumbnails and Esc to close.
 - "Check prices" links on each live card open Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
 - On any card you can type your own resale value. On a card with a model reference, the value is saved for that model and used for every listing of it from then on; without a reference, it applies to that listing only. Your values override the estimate, and your settings, resale values and watchlist are saved in your browser, so they don't carry over to another device or browser.
 - When a brand scan finds nothing, the page says why: either eBay has no UK auctions for it (with a count of UK Buy It Now listings and a link to them, from one extra call), or eBay found auctions that the replica, parts or UK filters removed, with how many of each.

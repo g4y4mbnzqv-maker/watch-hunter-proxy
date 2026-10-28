@@ -7,7 +7,7 @@ export default function EndingSoon({ items, now }) {
   if (!items.length) return null;
 
   return (
-    <section className="mb-6 rounded-2xl bg-rose-950/40 p-4 ring-1 ring-rose-500/40">
+    <section className="mb-6 rounded-3xl bg-gradient-to-br from-rose-500/15 to-rose-500/5 p-4 ring-1 ring-rose-400/30 backdrop-blur">
       <h2 className="mb-3 text-sm font-medium text-rose-200">
         Ending soon on your watchlist
       </h2>

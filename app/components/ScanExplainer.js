@@ -1,7 +1,7 @@
 "use client";
 
 // Explains an empty brand scan from the counts the server sends back
-export default function ScanExplainer({ brand, stats, includeJunk }) {
+export default function ScanExplainer({ brand, stats, includeJunk, includesBuyItNow }) {
   const binUrl = `https://www.ebay.co.uk/sch/i.html?${new URLSearchParams({
     _nkw: brand,
     LH_BIN: "1",
@@ -17,7 +17,9 @@ export default function ScanExplainer({ brand, stats, includeJunk }) {
 
   return (
     <div className="rounded-2xl border border-dashed border-zinc-800 px-6 py-10 text-center">
-      {stats.auctionsOnEbay === 0 ? (
+      {includesBuyItNow ? (
+        <BothTypes brand={brand} stats={stats} dropped={dropped} includeJunk={includeJunk} />
+      ) : stats.auctionsOnEbay === 0 ? (
         <>
           <p className="text-sm text-zinc-200">
             eBay has no UK auctions for “{brand}” right now.
@@ -61,5 +63,36 @@ export default function ScanExplainer({ brand, stats, includeJunk }) {
         </>
       )}
     </div>
+  );
+}
+
+// When Buy It Now was searched too, its count is a result, not a hint
+function BothTypes({ brand, stats, dropped, includeJunk }) {
+  const found = (stats.auctionsOnEbay ?? 0) + (stats.buyItNowOnEbay ?? 0);
+
+  if (!found) {
+    return (
+      <>
+        <p className="text-sm text-zinc-200">eBay has no UK listings for “{brand}” right now.</p>
+        <p className="mx-auto mt-1 max-w-md text-xs text-zinc-500">
+          Check the spelling, or try a shorter search such as just the brand name.
+        </p>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p className="text-sm text-zinc-200">
+        eBay found {found.toLocaleString("en-GB")} UK listings for “{brand}”, but none of the
+        newest {stats.checked} passed the filters.
+      </p>
+      {dropped.length > 0 && (
+        <p className="mx-auto mt-1 max-w-md text-xs text-zinc-500">
+          Of those, {dropped.join(", ")}.
+          {!includeJunk && stats.junk > 0 && " Tick “Include parts and repairs” to see those."}
+        </p>
+      )}
+    </>
   );
 }
