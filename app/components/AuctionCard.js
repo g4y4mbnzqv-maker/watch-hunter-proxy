@@ -5,6 +5,7 @@ import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
 import { baseModel } from "@/lib/models";
 import { cautionWords } from "@/lib/wording";
 import { gradeLabel } from "@/lib/condition";
+import { ebayImage } from "@/lib/images";
 
 const STATUS_STYLES = {
   deal: {
@@ -68,12 +69,7 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
     >
       <div className="relative aspect-[16/10] bg-zinc-800 sm:aspect-[4/3]">
         {item.image ? (
-          <img
-            src={item.image}
-            alt=""
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
+          <ListingPhoto url={item.image} />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-zinc-500">
             No photo
@@ -196,6 +192,27 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
         </a>
       </div>
     </article>
+  );
+}
+
+// Cards are at most about 380px wide, so 500px suits most screens and
+// 1600px covers high-density ones. Falls back to eBay's own URL if a
+// bigger copy won't load.
+function ListingPhoto({ url }) {
+  const [failed, setFailed] = useState(false);
+  const large = ebayImage(url, 1600);
+  const upgraded = !failed && large !== url;
+
+  return (
+    <img
+      src={upgraded ? ebayImage(url, 500) : url}
+      srcSet={upgraded ? `${ebayImage(url, 500)} 500w, ${large} 1600w` : undefined}
+      sizes="(min-width: 1024px) 380px, (min-width: 640px) 50vw, 100vw"
+      alt=""
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
