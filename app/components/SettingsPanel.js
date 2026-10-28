@@ -57,7 +57,7 @@ const SELLER_FIELDS = [
 
 export default function SettingsPanel({ settings, onChange }) {
   return (
-    <section className="rounded-2xl bg-zinc-900 p-5 ring-1 ring-zinc-800">
+    <section className="rounded-3xl bg-zinc-900/60 p-5 ring-1 ring-white/5 backdrop-blur">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-medium text-zinc-100">Settings</h2>
         <button
@@ -104,7 +104,7 @@ function FieldGrid({ fields, settings, onChange }) {
                   [field.key]: Math.max(parseFloat(e.target.value) || 0, 0),
                 })
               }
-              className={`w-full rounded-lg bg-zinc-800 py-2 text-sm text-zinc-100 outline-none ring-1 ring-zinc-700 focus:ring-emerald-500 ${
+              className={`w-full rounded-xl bg-black/30 py-2 text-sm text-zinc-100 outline-none ring-1 ring-white/10 focus:ring-emerald-400 ${
                 field.prefix ? "pl-7 pr-3" : "pl-3 pr-8"
               }`}
             />

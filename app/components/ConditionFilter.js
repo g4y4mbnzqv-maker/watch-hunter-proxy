@@ -28,8 +28,8 @@ export default function ConditionFilter({ selected, onChange, goodOrBetter }) {
             onClick={() => toggle(option.key)}
             className={`rounded-full px-3 py-1 text-xs ring-1 transition ${
               active
-                ? "bg-emerald-500/15 text-emerald-300 ring-emerald-500/50"
-                : "text-zinc-500 ring-zinc-800 hover:text-zinc-300 hover:ring-zinc-600"
+                ? "bg-emerald-400/15 text-emerald-300 ring-emerald-400/40"
+                : "text-zinc-500 ring-white/10 hover:text-zinc-300 hover:ring-white/20"
             }`}
           >
             {option.label}

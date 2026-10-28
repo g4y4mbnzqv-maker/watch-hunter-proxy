@@ -57,7 +57,7 @@ export default function BrandPicker({ selected, disabled, onPick }) {
           type="button"
           onClick={() => setShowAll((open) => !open)}
           aria-expanded={showAll}
-          className="rounded-full px-3 py-1 text-xs text-emerald-400 hover:text-emerald-300"
+          className="rounded-full px-3 py-1 text-xs font-medium text-emerald-300 hover:text-emerald-200"
         >
           {showAll ? "Fewer brands" : "All brands"}
         </button>
@@ -96,8 +96,8 @@ function BrandChip({ name, selected, disabled, onPick }) {
       onClick={() => onPick(name)}
       className={`rounded-full px-3 py-1 text-xs ring-1 transition ${
         active
-          ? "bg-zinc-100 text-zinc-950 ring-zinc-100"
-          : "text-zinc-300 ring-zinc-700 hover:ring-zinc-500"
+          ? "bg-white text-zinc-950 ring-white"
+          : "text-zinc-300 ring-white/10 hover:bg-white/5 hover:ring-white/20"
       }`}
     >
       {name}
