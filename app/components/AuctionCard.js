@@ -19,6 +19,12 @@ const STATUS_STYLES = {
     badge: "bg-amber-400 text-amber-950",
     label: "Thin margin",
   },
+  check: {
+    ring: "ring-amber-500/40",
+    profit: "text-amber-300",
+    badge: "bg-amber-400 text-amber-950",
+    label: "Check value",
+  },
   loss: {
     ring: "ring-zinc-800",
     profit: "text-rose-400",
@@ -165,13 +171,16 @@ export default function AuctionCard({ item, now, onSetResale, saved, onToggleSav
 
         {item.comps && <PriceRange comps={item.comps} />}
 
+        {item.roughReasons?.length > 0 && <RoughNote reasons={item.roughReasons} />}
+
         {ended ? (
           <p className="text-xs text-zinc-500">
             This auction has ended. Figures use the last bid Watch Hunter saw.
           </p>
         ) : (
           <>
-            {item.maxBid !== null && <BidHeadroom item={item} />}
+            {/* A bid limit from a shaky estimate could cost real money */}
+            {item.maxBid !== null && !item.roughReasons?.length && <BidHeadroom item={item} />}
             <ResaleEditor item={item} onSetResale={onSetResale} />
             <PriceChecks item={item} />
           </>
@@ -229,7 +238,18 @@ function PriceRange({ comps }) {
         {formatGbp(comps.low)} to {formatGbp(comps.high)}
       </span>{" "}
       across {comps.count} {condition ? `${condition} ` : ""}listings
+      {comps.ignored > 0 &&
+        `, ${comps.ignored} very high or low ${comps.ignored === 1 ? "price" : "prices"} ignored`}
     </p>
+  );
+}
+
+function RoughNote({ reasons }) {
+  return (
+    <div className="rounded-xl bg-amber-950/30 px-3 py-2 text-xs text-amber-300 ring-1 ring-amber-500/30">
+      Rough estimate: {reasons.join(", ")}. Check Chrono24 before trusting this
+      profit, then set your own value to see a bid limit.
+    </div>
   );
 }
 

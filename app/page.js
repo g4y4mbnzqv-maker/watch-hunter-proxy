@@ -375,7 +375,8 @@ export default function Home() {
   const stats = useMemo(() => {
     const priced = analysed.filter((item) => item.profit !== null);
     const deals = analysed.filter((item) => item.status === "deal");
-    const best = priced.reduce(
+    // Rough estimates can't headline the best profit
+    const best = priced.filter((item) => item.status !== "check").reduce(
       (top, item) => (top === null || item.profit > top.profit ? item : top),
       null
     );
