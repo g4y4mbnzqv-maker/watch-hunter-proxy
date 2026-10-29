@@ -20,7 +20,7 @@ const LIBRARY = [{ label: "Popular", brands: POPULAR }, ...MORE_GROUPS];
 
 // Brand chips to scan from, led by your Top deals brands. "Edit" lets you
 // drag brands into or out of Top deals, or tap to add and remove them.
-export default function BrandPicker({ selected, disabled, onPick, topBrands, onTopBrandsChange }) {
+export default function BrandPicker({ selected, disabled, onPick, topBrands, onTopBrandsChange, onTopDeals }) {
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState(false);
   const { drag, startPress, wasDragged } = useChipDrag(topBrands, onTopBrandsChange);
@@ -107,8 +107,8 @@ export default function BrandPicker({ selected, disabled, onPick, topBrands, onT
             <button type="button" onClick={() => onTopBrandsChange(POPULAR)} className="text-zinc-400 hover:text-zinc-200">
               Reset
             </button>
-            <button type="button" onClick={() => setEditing(false)} className="font-semibold text-emerald-300 hover:text-emerald-200">
-              Done
+            <button type="button" onClick={() => setEditing(false)} className="text-zinc-400 hover:text-zinc-200">
+              Close
             </button>
           </div>
         </div>
@@ -129,6 +129,18 @@ export default function BrandPicker({ selected, disabled, onPick, topBrands, onT
           {full && ` The limit is ${MAX_TOP_BRANDS} brands.`}
         </p>
         <CustomBrand topBrands={topBrands} onTopBrandsChange={onTopBrandsChange} disabled={full} />
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            setEditing(false);
+            onTopDeals();
+          }}
+          className="mt-3 w-full rounded-xl bg-gradient-to-r from-emerald-400 to-teal-300 py-2.5 text-sm font-semibold text-emerald-950 transition hover:brightness-110 disabled:opacity-60"
+        >
+          Save and find deals
+        </button>
+        <p className="mt-1.5 text-center text-[11px] text-zinc-500">Your list saves as you go. Close keeps it without scanning.</p>
       </div>
 
       {others.map((group) => (

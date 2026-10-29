@@ -79,6 +79,7 @@ export default function SearchPanel({
           onPick={scan}
           topBrands={topBrands}
           onTopBrandsChange={onTopBrandsChange}
+          onTopDeals={onTopDeals}
         />
       </div>
 
