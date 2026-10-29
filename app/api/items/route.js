@@ -29,7 +29,7 @@ export async function GET(req) {
     console.error(err);
 
     return Response.json(
-      { error: true, message: err.message },
+      { error: true, message: err.message, limitReached: Boolean(err.limitReached) },
       { status: err instanceof EbayError ? err.status : 500 }
     );
   }

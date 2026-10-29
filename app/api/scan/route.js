@@ -30,7 +30,12 @@ export async function GET(req) {
 
   try {
     const { items: listings, stats } = await searchListings(brand, { includeJunk, types });
-    const comps = await getComparables(brand, listings);
+    let limitReached = false;
+    const comps = await getComparables(brand, listings, {
+      onLimit: () => {
+        limitReached = true;
+      },
+    });
 
     const results = listings.map((item) => ({
       ...item,
@@ -41,13 +46,15 @@ export async function GET(req) {
       brand,
       count: results.length,
       stats,
+      // Some resale lookups were refused, so some cards lack an estimate
+      limitReached,
       results,
     });
   } catch (err) {
     console.error(err);
 
     return Response.json(
-      { error: true, message: err.message },
+      { error: true, message: err.message, limitReached: Boolean(err.limitReached) },
       { status: err instanceof EbayError ? err.status : 500 }
     );
   }

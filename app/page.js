@@ -6,6 +6,7 @@ import SettingsPanel from "./components/SettingsPanel";
 import BrandPicker, { POPULAR } from "./components/BrandPicker";
 import UsageMeter from "./components/UsageMeter";
 import EndingSoon from "./components/EndingSoon";
+import LimitBanner from "./components/LimitBanner";
 import ConditionFilter from "./components/ConditionFilter";
 import ScanExplainer from "./components/ScanExplainer";
 import ListingTypeFilter, { LISTING_TYPES } from "./components/ListingTypeFilter";
@@ -85,11 +86,23 @@ export default function Home() {
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
   const [usage, setUsage] = useState(null);
+  // Set when eBay refuses a call because the app's allowance is used up
+  const [limitHit, setLimitHit] = useState(false);
   const [alertsOn, setAlertsOn] = useStoredState("wh-alerts", false);
   // Item IDs already notified, so each auction alerts once
   const [alerted, setAlerted] = useStoredState("wh-alerted", {});
   const [alertNote, setAlertNote] = useState(null);
   const now = useNow(30_000);
+
+  const resetAt = usage?.reset ? new Date(usage.reset).getTime() : null;
+  // Paused from the first refused call, or when the meter shows nothing
+  // left, until eBay's reset time passes
+  const limitPaused =
+    (limitHit || (usage && usage.remaining <= 0)) && !(resetAt && now >= resetAt);
+
+  useEffect(() => {
+    if (limitHit && resetAt && now >= resetAt) setLimitHit(false);
+  }, [limitHit, resetAt, now]);
 
   // The meter is a nice-to-have, so any failure just hides it
   async function refreshUsage() {
@@ -136,8 +149,15 @@ export default function Home() {
     const res = await fetch(`/api/scan?${params}`);
     const data = await res.json();
 
+    if (data.limitReached) {
+      setLimitHit(true);
+      refreshUsage();
+    }
+
     if (!res.ok || data.error) {
-      throw new Error(data.message || `Scan failed (${res.status})`);
+      throw Object.assign(new Error(data.message || `Scan failed (${res.status})`), {
+        limitReached: Boolean(data.limitReached),
+      });
     }
 
     return data;
@@ -160,7 +180,8 @@ export default function Home() {
       setScannedBrand(query);
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      // The limit banner explains a refused scan
+      setError(err.limitReached ? null : err.message);
       setResults([]);
     } finally {
       setLoading(false);
@@ -178,8 +199,18 @@ export default function Home() {
     const failures = [];
     let done = 0;
 
+    let limited = false;
+
     for (let i = 0; i < POPULAR.length; i += TOP_DEALS_CONCURRENCY) {
       const batch = POPULAR.slice(i, i + TOP_DEALS_CONCURRENCY);
+
+      // Once eBay refuses calls, the remaining brands would only fail too
+      if (limited) {
+        batch.forEach((name) => failures.push({ name, message: "Not scanned" }));
+        done += batch.length;
+        setTopProgress({ done, total: POPULAR.length });
+        continue;
+      }
 
       await Promise.all(
         batch.map(async (name) => {
@@ -192,6 +223,7 @@ export default function Home() {
             }
           } catch (err) {
             console.error(err);
+            if (err.limitReached) limited = true;
             failures.push({ name, message: err.message });
           } finally {
             done += 1;
@@ -202,7 +234,7 @@ export default function Home() {
     }
 
     if (failures.length === POPULAR.length) {
-      setError(failures[0].message);
+      setError(limited ? null : failures[0].message);
       setResults([]);
     } else {
       setResults([...combined.values()]);
@@ -244,8 +276,11 @@ export default function Home() {
       const res = await fetch(`/api/items?${new URLSearchParams({ ids: ids.join(",") })}`);
       const data = await res.json();
 
+      if (data.limitReached) setLimitHit(true);
       if (!res.ok || data.error) {
-        throw new Error(data.message || `Refresh failed (${res.status})`);
+        throw Object.assign(new Error(data.message || `Refresh failed (${res.status})`), {
+          limitReached: Boolean(data.limitReached),
+        });
       }
 
       setWatchlist((current) => {
@@ -267,7 +302,8 @@ export default function Home() {
       refreshUsage();
     } catch (err) {
       console.error(err);
-      setRefreshError(err.message);
+      if (err.limitReached) refreshUsage();
+      else setRefreshError(err.message);
     } finally {
       setRefreshing(false);
     }
@@ -284,7 +320,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (mode !== "watchlist" || refreshing) return;
+    if (mode !== "watchlist" || refreshing || limitPaused) return;
     if (refreshedAt && Date.now() - refreshedAt < WATCHLIST_STALE_MS) return;
     refreshWatchlist();
     // Only re-run when the watchlist is opened
@@ -513,6 +549,8 @@ export default function Home() {
         </div>
       </header>
 
+      {limitPaused && <LimitBanner resetAt={resetAt} onRetry={() => setLimitHit(false)} />}
+
       <EndingSoon items={endingSoon} now={now} />
 
       {showSettings && (
@@ -537,6 +575,7 @@ export default function Home() {
           onToggleSave={toggleSave}
           onSetResale={setResale}
           onFindDeals={() => setMode("scan")}
+          paused={limitPaused}
           alertsOn={alertsOn}
           alertNote={alertNote}
           onEnableAlerts={enableAlerts}
@@ -577,7 +616,7 @@ export default function Home() {
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || limitPaused}
                 className="rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-300 px-6 py-3.5 font-semibold text-emerald-950 shadow-lg shadow-emerald-500/20 transition hover:brightness-110 disabled:opacity-60"
               >
                 {loading && !topProgress ? "Scanning…" : "Find deals"}
@@ -585,7 +624,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={scanTopDeals}
-                disabled={loading}
+                disabled={loading || limitPaused}
                 title={`Scan ${POPULAR.join(", ")} and show the best deals across all of them`}
                 className="rounded-2xl px-5 py-3.5 font-semibold text-emerald-300 ring-1 ring-emerald-400/40 transition hover:bg-emerald-400/10 disabled:opacity-60"
               >
@@ -598,7 +637,7 @@ export default function Home() {
             <div className="mt-4">
               <BrandPicker
                 selected={scannedBrand}
-                disabled={loading}
+                disabled={loading || limitPaused}
                 onPick={scan}
               />
             </div>
@@ -798,6 +837,7 @@ function Watchlist({
   alertNote,
   onEnableAlerts,
   onDisableAlerts,
+  paused,
 }) {
   if (!items.length) {
     return (
@@ -855,7 +895,7 @@ function Watchlist({
           <button
             type="button"
             onClick={onRefresh}
-            disabled={refreshing}
+            disabled={refreshing || paused}
             className="rounded-full bg-white px-3.5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-60"
           >
             {refreshing ? "Refreshing…" : "Refresh bids"}
