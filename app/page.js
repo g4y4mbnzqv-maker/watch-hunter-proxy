@@ -21,6 +21,8 @@ import { useWatchlist } from "./client/useWatchlist";
 import { useDeals } from "./client/useDeals";
 import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
+import { niche } from "@/lib/niche";
+import { pickupFor } from "@/lib/postcode";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
 import { GRADES } from "@/lib/condition";
@@ -123,9 +125,16 @@ export default function Home() {
     [setModelValues, setOverrides]
   );
 
+  // Bike Hunter only: bikes collectable near your postcode
+  const pickup = useMemo(
+    () => (niche.collection ? pickupFor(settings.postcode, settings.collectionMiles) : null),
+    [settings.postcode, settings.collectionMiles]
+  );
+
   const scanner = useScanner({
     listingTypes,
     includeJunk,
+    pickup,
     onLimitHit: usage.markLimitHit,
     onScanned: ({ topDeals }) => {
       setScanId((id) => id + 1);

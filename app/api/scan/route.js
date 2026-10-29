@@ -1,5 +1,6 @@
 import { searchListings, getComparables, EbayError } from "@/lib/ebay";
 import { recordScanQuietly } from "@/lib/harvest";
+import { pickupFor } from "@/lib/postcode";
 
 const LISTING_TYPES = ["AUCTION", "BUY_IT_NOW"];
 
@@ -14,6 +15,8 @@ export async function GET(req) {
   const types = (searchParams.get("types") || "AUCTION")
     .split(",")
     .filter((type) => LISTING_TYPES.includes(type));
+  // Bike Hunter: only listings collectable this close to a postcode
+  const pickup = pickupFor(searchParams.get("postcode"), searchParams.get("miles"));
 
   if (!types.length) {
     return Response.json(
@@ -30,7 +33,7 @@ export async function GET(req) {
   }
 
   try {
-    const { items: listings, stats } = await searchListings(brand, { includeJunk, types });
+    const { items: listings, stats } = await searchListings(brand, { includeJunk, types, pickup });
     let limitReached = false;
     const comps = await getComparables(brand, listings, {
       onLimit: () => {

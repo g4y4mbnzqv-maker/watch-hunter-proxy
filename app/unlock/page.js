@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { niche } from "@/lib/niche";
 
 export default function Unlock() {
   const [passcode, setPasscode] = useState("");
@@ -38,7 +39,7 @@ export default function Unlock() {
         className="w-full max-w-sm rounded-2xl bg-zinc-900 p-6 ring-1 ring-zinc-800"
       >
         <h1 className="text-xl font-semibold tracking-tight text-white">
-          Watch Hunter
+          {niche.appName}
         </h1>
         <p className="mt-1 text-sm text-zinc-400">Enter your passcode to continue.</p>
 

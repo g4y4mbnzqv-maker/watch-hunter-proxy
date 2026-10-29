@@ -1,5 +1,7 @@
 "use client";
 
+import { niche } from "@/lib/niche";
+
 // Explains an empty brand scan from the counts the server sends back
 export default function ScanExplainer({ brand, stats, includeJunk, includesBuyItNow }) {
   const binUrl = `https://www.ebay.co.uk/sch/i.html?${new URLSearchParams({
@@ -9,7 +11,7 @@ export default function ScanExplainer({ brand, stats, includeJunk, includesBuyIt
   })}`;
 
   const dropped = [
-    stats.notWatches > 0 && `${stats.notWatches} weren't watches`,
+    stats.notWatches > 0 && `${stats.notWatches} weren't ${niche.noun.many}`,
     stats.replicas > 0 && `${stats.replicas} looked like replicas or homages`,
     stats.junk > 0 && `${stats.junk} were parts, repairs or accessories`,
     stats.outsideUk > 0 && `${stats.outsideUk} weren't in the UK`,
