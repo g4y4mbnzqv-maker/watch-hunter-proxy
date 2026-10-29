@@ -3,7 +3,7 @@
 import CardGrid from "./CardGrid";
 import { EmptyState, Notice } from "./Placeholders";
 
-export default function Watchlist({ watch, now, paused, onSetResale, onFindDeals }) {
+export default function Watchlist({ watch, now, paused, onSetResale, onFindDeals, onLogPurchase }) {
   if (!watch.items.length) {
     return (
       <EmptyState
@@ -72,6 +72,7 @@ export default function Watchlist({ watch, now, paused, onSetResale, onFindDeals
         isSaved={() => true}
         onToggleSave={watch.toggleSave}
         onSetResale={onSetResale}
+        onLogPurchase={onLogPurchase}
       />
     </section>
   );

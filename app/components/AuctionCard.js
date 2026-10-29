@@ -51,7 +51,7 @@ const SELLER_STYLES = {
 // changes, not on every keystroke elsewhere on the page
 export default memo(AuctionCard);
 
-function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
+function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchase }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const style = STATUS_STYLES[item.status];
   const isBuyItNow = item.listingType === "BUY_IT_NOW";
@@ -188,6 +188,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
 
         <SellerLine seller={item.seller} check={item.sellerCheck} />
         <WordingNote title={item.title} />
+        {!ended && item.overlooked?.length > 0 && <OverlookedNote reasons={item.overlooked} />}
         {item.roughReasons?.length > 0 && <RoughNote reasons={item.roughReasons} />}
 
         {ended ? (
@@ -217,6 +218,15 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
           </a>
           {!ended && <PriceChecks item={item} />}
         </div>
+        {onLogPurchase && (
+          <button
+            type="button"
+            onClick={() => onLogPurchase(item)}
+            className="-mt-1 self-start text-xs font-medium text-emerald-300 hover:text-emerald-200"
+          >
+            I bought this: add to my sales log
+          </button>
+        )}
       </div>
 
       {galleryOpen && (
@@ -319,6 +329,7 @@ function Note({ tone = "amber", children }) {
   const tones = {
     amber: "bg-amber-400/10 text-amber-200 ring-amber-400/20",
     rose: "bg-rose-500/10 text-rose-200 ring-rose-400/25",
+    sky: "bg-sky-400/10 text-sky-200 ring-sky-400/20",
   };
   return <div className={`rounded-xl px-3 py-2 text-xs leading-relaxed ring-1 ${tones[tone]}`}>{children}</div>;
 }
@@ -330,6 +341,12 @@ function WordingNote({ title }) {
   return (
     <Note>Read the listing first: it says {words.map((word) => `"${word}"`).join(", ")}</Note>
   );
+}
+
+// Fewer buyers seeing a listing can mean fewer bids and a lower price
+function OverlookedNote({ reasons }) {
+  const text = reasons.length > 1 ? `${reasons.slice(0, -1).join(", ")} and ${reasons.at(-1)}` : reasons[0];
+  return <Note tone="sky">Fewer buyers may spot this: {text}.</Note>;
 }
 
 // Spread of the Buy It Now prices behind the estimate
@@ -469,6 +486,12 @@ function PriceChecks({ item }) {
   if (!query) return null;
 
   const sites = [
+    {
+      // Finished listings that sold, the nearest free check on real prices
+      name: "eBay sold listings",
+      short: "Sold",
+      url: `https://www.ebay.co.uk/sch/i.html?${new URLSearchParams({ _nkw: query, LH_Sold: "1", LH_Complete: "1" })}`,
+    },
     {
       name: "Chrono24",
       short: "C24",

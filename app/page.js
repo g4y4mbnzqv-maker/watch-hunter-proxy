@@ -6,6 +6,7 @@ import SearchPanel from "./components/SearchPanel";
 import Results from "./components/Results";
 import Watchlist from "./components/Watchlist";
 import PriceIndex from "./components/PriceIndex";
+import DealLog from "./components/DealLog";
 import SettingsPanel from "./components/SettingsPanel";
 import EndingSoon from "./components/EndingSoon";
 import LimitBanner from "./components/LimitBanner";
@@ -18,6 +19,7 @@ import { analyseAll, isLive } from "./client/listings";
 import { useScanner } from "./client/useScanner";
 import { useUsage } from "./client/useUsage";
 import { useWatchlist } from "./client/useWatchlist";
+import { useDeals } from "./client/useDeals";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
 import { GRADES } from "@/lib/condition";
@@ -53,6 +55,18 @@ export default function Home() {
   const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES);
 
   const usage = useUsage(now);
+  const dealBook = useDeals();
+  // The deal to open when the sales log is shown, after "I bought this"
+  const [openDealId, setOpenDealId] = useState(null);
+  const { logPurchase } = dealBook;
+  const onLogPurchase = useCallback(
+    (item) => {
+      setOpenDealId(logPurchase(item));
+      setMode("deals");
+      window.scrollTo({ top: 0 });
+    },
+    [logPurchase]
+  );
 
   useEffect(() => {
     // Phones need a service worker to show notifications
@@ -192,6 +206,17 @@ export default function Home() {
           now={now}
           paused={usage.limitPaused}
           onSetResale={setResale}
+          onFindDeals={() => setMode("scan")}
+          onLogPurchase={onLogPurchase}
+        />
+      )}
+
+      {mode === "deals" && (
+        <DealLog
+          dealBook={dealBook}
+          settings={settings}
+          onSettingsChange={setSettings}
+          openId={openDealId}
           onFindDeals={() => setMode("scan")}
         />
       )}

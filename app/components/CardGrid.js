@@ -8,7 +8,7 @@ const PAGE_SIZE = 24;
 
 // Draws listings a page at a time, so a big Top deals result stays quick.
 // Give it a new key to start again from the first page.
-export default function CardGrid({ items, now, isSaved, onToggleSave, onSetResale }) {
+export default function CardGrid({ items, now, isSaved, onToggleSave, onSetResale, onLogPurchase }) {
   const [shown, setShown] = useState(PAGE_SIZE);
   const sentinel = useRef(null);
   const more = items.length - shown;
@@ -39,6 +39,7 @@ export default function CardGrid({ items, now, isSaved, onToggleSave, onSetResal
             saved={isSaved(item.itemId)}
             onToggleSave={onToggleSave}
             onSetResale={onSetResale}
+            onLogPurchase={onLogPurchase}
           />
         ))}
       </div>

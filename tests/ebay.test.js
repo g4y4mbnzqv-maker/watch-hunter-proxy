@@ -137,6 +137,7 @@ describe("searchListings", () => {
       replicas: 1,
       junk: 1,
       shown: 1,
+      misspelt: 0,
       buyItNowOnEbay: null,
     });
   });
@@ -153,6 +154,53 @@ describe("searchListings", () => {
     expect(items).toEqual([]);
     expect(stats).toMatchObject({ auctionsOnEbay: 0, shown: 0, buyItNowOnEbay: 37 });
     expect(searches[1].searchParams.get("filter")).toContain("itemLocationCountry:GB");
+  });
+});
+
+describe("searchListings misspellings", () => {
+  const auction = (id, title) => ({
+    itemId: id,
+    title,
+    currentBidPrice: { value: "50" },
+    itemEndDate: new Date(Date.now() + 3_600_000).toISOString(),
+    itemLocation: { country: "GB" },
+  });
+
+  it("adds listings with a misspelt brand, tagged with the misspelling", async () => {
+    const searches = fakeEbay((url) =>
+      url.searchParams.get("q").startsWith("(")
+        ? {
+            total: 3,
+            itemSummaries: [
+              auction("1", "Tudor Black Bay 58"),
+              auction("2", "Tuder Ranger 79950"),
+              // eBay corrected the search, so this one has no misspelling
+              auction("3", "Tudor Pelagos"),
+            ],
+          }
+        : { total: 1, itemSummaries: [auction("1", "Tudor Black Bay 58")] }
+    );
+
+    const { items, stats } = await searchListings("Tudor");
+
+    expect(searches.map((url) => url.searchParams.get("q"))).toEqual(["tudor", "(tuder, tudour)"]);
+    expect(items.map((item) => [item.itemId, item.misspelt ?? null])).toEqual([
+      ["1", null],
+      ["2", "tuder"],
+    ]);
+    expect(stats.misspelt).toBe(1);
+  });
+
+  it("still returns the main results when the misspelling search fails", async () => {
+    fakeEbay((url) => {
+      if (url.searchParams.get("q").startsWith("(")) throw new Error("network");
+      return { total: 1, itemSummaries: [auction("9", "Cartier Tank")] };
+    });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { items } = await searchListings("Cartier");
+
+    expect(items.map((item) => item.itemId)).toEqual(["9"]);
   });
 });
 

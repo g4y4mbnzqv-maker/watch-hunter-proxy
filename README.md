@@ -47,7 +47,9 @@ It then opens full screen from its own icon.
 - If eBay refuses a call because the allowance is used up (HTTP 429), the page shows a banner with the reset time and pauses scans, Top deals and watchlist refreshes until then. Top deals stops scanning further brands once one is refused. Results already on screen, and saved auctions with their last bids, stay visible. If the reset time isn't known, the banner offers "Try again".
 - "Swipe" (next to the sort menu) shows the current view one listing at a time. Swipe right, tap the bookmark button or press → to save it to your watchlist. Swipe left, tap ✕ or press ← to skip it. Undo (or Z) takes back the last swipe. Skipped listings stay out of the deck for 14 days, and still show in Cards. The app remembers which layout you used last.
 - Tap a card's photo to open every photo in the listing full screen, with arrows, swiping, thumbnails and Esc to close.
-- "Check prices" links on each live card open Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
+- Each scan also searches for common misspellings of the brand ("Sieko", "Omgea", "Rollex" and so on, listed in `lib/overlooked.js`), as one extra eBay search per listing type. Fewer buyers find misspelt listings, so they often go cheap. eBay sometimes corrects the search, so only listings whose title really has a misspelling are added.
+- "Overlooked" shows listings fewer buyers may spot: a misspelt brand, an auction ending between midnight and 7am UK time, one photo or none, or a title under 30 characters. The card says which.
+- "Check prices" links on each live card open eBay's sold listings, Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
 - On any card you can type your own resale value. On a card with a model reference, the value is saved for that model and used for every listing of it from then on; without a reference, it applies to that listing only. Your values override the estimate, and your settings, resale values and watchlist are saved in your browser, so they don't carry over to another device or browser.
 - When a brand scan finds nothing, the page says why: either eBay has no UK auctions for it (with a count of UK Buy It Now listings and a link to them, from one extra call), or eBay found auctions that the replica, parts or UK filters removed, with how many of each.
 - Prices include the cheapest listed postage option. When eBay doesn't list a postage cost (collection only or calculated postage), the card shows "postage unknown" and postage counts as zero.
@@ -63,8 +65,19 @@ The Prices tab tracks asking prices per model over time.
 - Only daily totals are stored. Listing titles, photos, sellers and links are never saved, and a close is stored against a one-way hash of the item ID so the same auction isn't counted twice. Rows older than about 13 months are deleted on each daily run. This is meant to stay within eBay's rules on keeping listing data, but it hasn't been checked by a lawyer, so read eBay's API License Agreement if you plan to rely on it.
 - History starts from the day the database is connected. Nothing is backfilled.
 
+## Sales log
+
+The Sales tab records watches you buy and sell.
+
+- On a watchlist card, "I bought this" adds the watch with its price, today's date and the median asking price the estimate came from. "Add a watch" adds one by hand.
+- Add the sale price, date and where it sold. eBay fees default to the percentage in Settings and Vinted to none; type your own to override.
+- The tab shows profit so far, sales, stock still unsold and the median days to sell.
+- After 3 sales of watches that had an estimate, it shows what yours sold for as a share of the asking median (by brand too, once a brand has 3), and offers to use that as "Expected sale price". This replaces the 85% guess with your own results.
+- The log is kept in this browser only. "Download CSV" saves a copy for backups and tax records.
+
 ## Code layout
 
+- `lib/overlooked.js` holds the misspellings and the overlooked checks, and `lib/dealLog.js` the sales log sums.
 - `lib/priceIndex.js` reads and writes the price history (Neon Postgres), and `lib/harvest.js` runs the daily collection.
 - `lib/`: eBay calls and the rules behind every card (profit, models, nicknames, sellers, conditions, wording, images). No React.
 - `app/client/`: browser-side hooks and helpers. `useScanner` runs brand scans and Top deals, `useWatchlist` keeps saved listings and alerts, `useUsage` tracks the eBay allowance, and `listings.js` holds sorting and filtering helpers.
@@ -74,7 +87,7 @@ Results are drawn 24 cards at a time, with more added as you scroll. Cards are m
 
 ## API usage
 
-Each scan makes 1 search call per listing type, plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call per listing type (2 for brands with known misspellings), plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Tests
 

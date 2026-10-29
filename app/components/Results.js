@@ -11,6 +11,7 @@ const VIEWS = [
   { key: "deals", label: "Deals" },
   { key: "soon", label: "Ending in 6h" },
   { key: "bin", label: "Buy It Now" },
+  { key: "overlooked", label: "Overlooked" },
   { key: "all", label: "Everything" },
 ];
 
@@ -30,6 +31,7 @@ const IN_VIEW = {
   deals: (item) => item.status === "deal",
   soon: (item, now) => endsWithin(item, now, 6),
   bin: (item) => item.listingType === "BUY_IT_NOW",
+  overlooked: (item) => item.overlooked?.length > 0,
   all: () => true,
 };
 
