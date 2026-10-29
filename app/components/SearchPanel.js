@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import BrandPicker, { POPULAR } from "./BrandPicker";
+import BrandPicker from "./BrandPicker";
 import ConditionFilter from "./ConditionFilter";
 import ListingTypeFilter from "./ListingTypeFilter";
 
@@ -15,6 +15,8 @@ export default function SearchPanel({
   topProgress,
   onScan,
   onTopDeals,
+  topBrands,
+  onTopBrandsChange,
   includeJunk,
   onIncludeJunkChange,
   hideRisky,
@@ -63,7 +65,7 @@ export default function SearchPanel({
           type="button"
           onClick={onTopDeals}
           disabled={busy}
-          title={`Scan ${POPULAR.join(", ")} and show the best deals across all of them`}
+          title={`Scan ${topBrands.join(", ")} and show the best deals across all of them`}
           className="rounded-2xl px-5 py-3.5 font-semibold text-emerald-300 ring-1 ring-emerald-400/40 transition hover:bg-emerald-400/10 disabled:opacity-60"
         >
           {topProgress ? `Scanning ${topProgress.done}/${topProgress.total}…` : "Top deals"}
@@ -71,7 +73,13 @@ export default function SearchPanel({
       </form>
 
       <div className="mt-4">
-        <BrandPicker selected={scannedBrand} disabled={busy} onPick={scan} />
+        <BrandPicker
+          selected={scannedBrand}
+          disabled={busy}
+          onPick={scan}
+          topBrands={topBrands}
+          onTopBrandsChange={onTopBrandsChange}
+        />
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 pt-4">

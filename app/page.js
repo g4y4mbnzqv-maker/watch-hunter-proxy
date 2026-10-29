@@ -11,7 +11,6 @@ import SettingsPanel from "./components/SettingsPanel";
 import EndingSoon from "./components/EndingSoon";
 import LimitBanner from "./components/LimitBanner";
 import ScanExplainer from "./components/ScanExplainer";
-import { POPULAR } from "./components/BrandPicker";
 import { LISTING_TYPES } from "./components/ListingTypeFilter";
 import { Hero, Intro, LoadingGrid, Notice } from "./components/Placeholders";
 import { useNow, useStoredState } from "./client/hooks";
@@ -20,6 +19,8 @@ import { useScanner } from "./client/useScanner";
 import { useUsage } from "./client/useUsage";
 import { useWatchlist } from "./client/useWatchlist";
 import { useDeals } from "./client/useDeals";
+import { cleanTopBrands } from "./client/topBrands";
+import { POPULAR } from "@/lib/brands";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
 import { GRADES } from "@/lib/condition";
@@ -53,6 +54,9 @@ export default function Home() {
   const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
   // Auctions, Buy It Now or both; both by default
   const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES);
+  // Brands Top deals scans, popular ones to start with
+  const [storedTopBrands, setTopBrands] = useStoredState("wh-top-brands", POPULAR);
+  const topBrands = useMemo(() => cleanTopBrands(storedTopBrands), [storedTopBrands]);
 
   const usage = useUsage(now);
   const dealBook = useDeals();
@@ -233,7 +237,9 @@ export default function Home() {
             paused={usage.limitPaused}
             topProgress={scanner.topProgress}
             onScan={scanner.scan}
-            onTopDeals={() => scanner.scanTopDeals(POPULAR)}
+            onTopDeals={() => scanner.scanTopDeals(topBrands)}
+            topBrands={topBrands}
+            onTopBrandsChange={setTopBrands}
             includeJunk={includeJunk}
             onIncludeJunkChange={setIncludeJunk}
             hideRisky={hideRisky}
@@ -248,7 +254,7 @@ export default function Home() {
 
           {scanner.loading && scanner.topProgress && (
             <p className="mb-4 text-sm text-zinc-400">
-              Checking {POPULAR.length} popular brands for the best deals. This takes a little
+              Checking {topBrands.length} {topBrands.length === 1 ? "brand" : "brands"} for the best deals. This takes a little
               longer than a single brand.
             </p>
           )}
