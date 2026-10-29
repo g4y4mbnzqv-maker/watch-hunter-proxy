@@ -34,6 +34,8 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
+  // Cards or the swipe deck, remembered in this browser
+  const [layout, setLayout] = useStoredState("wh-layout", "cards");
   // Counts scans, so the card grid starts from its first page on each one
   const [scanId, setScanId] = useState(0);
 
@@ -255,6 +257,8 @@ export default function Home() {
               onViewChange={setView}
               sort={sort}
               onSortChange={setSort}
+              layout={layout}
+              onLayoutChange={setLayout}
               now={now}
               isSaved={isSaved}
               onToggleSave={watch.toggleSave}
