@@ -254,3 +254,37 @@ describe("Buy It Now and photos", () => {
     expect(comps.t).toMatchObject({ median: 300, count: 3, matchedBy: "name" });
   });
 });
+
+describe("eBay call allowance", () => {
+  it("says so plainly when eBay refuses a search", async () => {
+    vi.stubGlobal("fetch", async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes("oauth2")) return Response.json({ access_token: "t", expires_in: 7200 });
+      if (url.pathname.includes("taxonomy")) return new Response("", { status: 404 });
+      return new Response('{"errors":[{"errorId":2001,"message":"Too many requests"}]}', { status: 429 });
+    });
+
+    const failure = await searchListings("limit test").catch((err) => err);
+    expect(failure.limitReached).toBe(true);
+    expect(failure.status).toBe(429);
+    expect(failure.message).toMatch(/allowance/);
+  });
+
+  it("reports refused resale lookups without failing the scan", async () => {
+    vi.stubGlobal("fetch", async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes("oauth2")) return Response.json({ access_token: "t", expires_in: 7200 });
+      if (url.pathname.includes("taxonomy")) return new Response("", { status: 404 });
+      return new Response("", { status: 429 });
+    });
+
+    let limited = false;
+    const comps = await getComparables("limit test", [{ itemId: "x", modelRef: "SKX013", conditionGroup: null }], {
+      onLimit: () => {
+        limited = true;
+      },
+    });
+    expect(comps.x).toBeNull();
+    expect(limited).toBe(true);
+  });
+});
