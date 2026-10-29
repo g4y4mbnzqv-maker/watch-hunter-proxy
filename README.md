@@ -50,9 +50,17 @@ It then opens full screen from its own icon.
 - When a brand scan finds nothing, the page says why: either eBay has no UK auctions for it (with a count of UK Buy It Now listings and a link to them, from one extra call), or eBay found auctions that the replica, parts or UK filters removed, with how many of each.
 - Prices include the cheapest listed postage option. When eBay doesn't list a postage cost (collection only or calculated postage), the card shows "postage unknown" and postage counts as zero.
 
+## Code layout
+
+- `lib/`: eBay calls and the rules behind every card (profit, models, nicknames, sellers, conditions, wording, images). No React.
+- `app/client/`: browser-side hooks and helpers. `useScanner` runs brand scans and Top deals, `useWatchlist` keeps saved listings and alerts, `useUsage` tracks the eBay allowance, and `listings.js` holds sorting and filtering helpers.
+- `app/components/`: the pieces of the page. `page.js` holds the shared state and wires them together.
+
+Results are drawn 24 cards at a time, with more added as you scroll. Cards are memoised, profit is worked out separately from the 30-second clock, and the search box keeps its own text, so typing doesn't redraw the results.
+
 ## API usage
 
-Each scan makes 1 search call, plus 1 call for each new model reference found (up to about 50, usually far fewer). Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call per listing type, plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Tests
 

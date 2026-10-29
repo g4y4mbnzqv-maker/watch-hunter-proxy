@@ -84,8 +84,8 @@ function BothTypes({ brand, stats, dropped, includeJunk }) {
   return (
     <>
       <p className="text-sm text-zinc-200">
-        eBay found {found.toLocaleString("en-GB")} UK listings for “{brand}”, but none of the
-        newest {stats.checked} passed the filters.
+        eBay found {found.toLocaleString("en-GB")} UK listings for “{brand}”, but none
+        {stats.checked > 0 ? ` of the newest ${stats.checked}` : ""} passed the filters.
       </p>
       {dropped.length > 0 && (
         <p className="mx-auto mt-1 max-w-md text-xs text-zinc-500">
