@@ -5,6 +5,7 @@ import UsageMeter from "./UsageMeter";
 const TABS = [
   { key: "scan", label: "Find deals" },
   { key: "watchlist", label: "Watchlist" },
+  { key: "index", label: "Prices" },
 ];
 
 export default function AppHeader({ mode, onModeChange, watchCount, usage, showSettings, onToggleSettings }) {

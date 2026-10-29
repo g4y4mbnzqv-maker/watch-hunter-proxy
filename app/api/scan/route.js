@@ -1,4 +1,5 @@
 import { searchListings, getComparables, EbayError } from "@/lib/ebay";
+import { recordScanQuietly } from "@/lib/harvest";
 
 const LISTING_TYPES = ["AUCTION", "BUY_IT_NOW"];
 
@@ -41,6 +42,9 @@ export async function GET(req) {
       ...item,
       comps: comps[item.itemId] ?? null,
     }));
+
+    // Adds this scan's prices to the price index, when there is a database
+    await recordScanQuietly(results, { brand });
 
     return Response.json({
       brand,

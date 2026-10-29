@@ -5,6 +5,7 @@ import AppHeader from "./components/AppHeader";
 import SearchPanel from "./components/SearchPanel";
 import Results from "./components/Results";
 import Watchlist from "./components/Watchlist";
+import PriceIndex from "./components/PriceIndex";
 import SettingsPanel from "./components/SettingsPanel";
 import EndingSoon from "./components/EndingSoon";
 import LimitBanner from "./components/LimitBanner";
@@ -192,6 +193,8 @@ export default function Home() {
           onFindDeals={() => setMode("scan")}
         />
       )}
+
+      {mode === "index" && <PriceIndex />}
 
       {mode === "scan" && (
         <>
