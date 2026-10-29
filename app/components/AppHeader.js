@@ -6,6 +6,7 @@ const TABS = [
   { key: "scan", label: "Find deals" },
   { key: "watchlist", label: "Watchlist" },
   { key: "index", label: "Prices" },
+  { key: "deals", label: "Sales" },
 ];
 
 export default function AppHeader({ mode, onModeChange, watchCount, usage, showSettings, onToggleSettings }) {
@@ -25,7 +26,7 @@ export default function AppHeader({ mode, onModeChange, watchCount, usage, showS
               key={tab.key}
               type="button"
               onClick={() => onModeChange(tab.key)}
-              className={`flex-1 rounded-full px-4 py-1.5 text-sm font-medium transition sm:flex-none ${
+              className={`flex-1 whitespace-nowrap rounded-full px-2 py-1.5 text-sm font-medium transition sm:flex-none sm:px-4 ${
                 mode === tab.key ? "bg-white text-zinc-950 shadow" : "text-zinc-400 hover:text-zinc-100"
               }`}
             >

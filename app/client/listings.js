@@ -2,13 +2,14 @@ import { formatGbp, formatTimeLeft, hoursLeft } from "../components/format";
 import { analyse } from "@/lib/profit";
 import { assessSeller } from "@/lib/seller";
 import { conditionGrade } from "@/lib/condition";
+import { overlookedReasons } from "@/lib/overlooked";
 
 // Listing fields kept for each saved listing, so the watchlist shows
 // without a scan and survives the listing ending
 export const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
   "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
-  "conditionId", "images", "listingType", "bestOffer", "modelName",
+  "conditionId", "images", "listingType", "bestOffer", "modelName", "misspelt",
 ];
 
 export const SORTERS = {
@@ -41,6 +42,7 @@ export function analyseAll(items, settings, resaleOverride) {
     ...analyse(item, settings, resaleOverride(item)),
     sellerCheck: assessSeller(item.seller, settings),
     conditionCheck: conditionGrade(item),
+    overlooked: overlookedReasons(item),
   }));
 }
 
