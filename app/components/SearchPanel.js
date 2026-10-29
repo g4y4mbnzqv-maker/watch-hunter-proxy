@@ -21,6 +21,8 @@ export default function SearchPanel({
   onIncludeJunkChange,
   hideRisky,
   onHideRiskyChange,
+  guaranteedOnly,
+  onGuaranteedOnlyChange,
   listingTypes,
   onListingTypesChange,
   grades,
@@ -93,6 +95,9 @@ export default function SearchPanel({
         </Checkbox>
         <Checkbox checked={hideRisky} onChange={onHideRiskyChange}>
           Hide risky sellers
+        </Checkbox>
+        <Checkbox checked={guaranteedOnly} onChange={onGuaranteedOnlyChange}>
+          Authenticity Guarantee only
         </Checkbox>
       </div>
 

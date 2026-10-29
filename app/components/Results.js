@@ -82,6 +82,7 @@ export default function Results({
             hidden.risky > 0 && `${hidden.risky} from risky sellers`,
             hidden.overBudget > 0 && `${hidden.overBudget} over your ${formatGbp(maxBudget)} limit`,
             hidden.otherCondition > 0 && `${hidden.otherCondition} in other conditions`,
+            hidden.notGuaranteed > 0 && `${hidden.notGuaranteed} without Authenticity Guarantee`,
           ])}
         />
         <Stat label="With a resale estimate" value={stats.priced} />

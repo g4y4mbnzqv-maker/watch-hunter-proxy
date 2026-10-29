@@ -50,6 +50,8 @@ export default function Home() {
   const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
   const [includeJunk, setIncludeJunk] = useState(false);
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
+  // Only listings eBay authenticates itself
+  const [guaranteedOnly, setGuaranteedOnly] = useStoredState("wh-guaranteed-only", false);
   // Condition grades to show; every grade by default
   const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
   // Auctions, Buy It Now or both; both by default
@@ -162,7 +164,7 @@ export default function Home() {
   const { shown, hidden } = useMemo(() => {
     const isRisky = (item) => hideRisky && item.sellerCheck.level === "risky";
     const overBudget = (item) => settings.maxBudget > 0 && item.totalCost > settings.maxBudget;
-    const counts = { risky: 0, overBudget: 0, otherCondition: 0 };
+    const counts = { risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0 };
     const kept = [];
 
     // Each hidden listing is counted once, under the first reason that applies
@@ -170,10 +172,11 @@ export default function Home() {
       if (isRisky(item)) counts.risky++;
       else if (overBudget(item)) counts.overBudget++;
       else if (!grades.includes(item.conditionCheck.grade)) counts.otherCondition++;
+      else if (guaranteedOnly && !item.authenticityGuarantee) counts.notGuaranteed++;
       else kept.push(item);
     }
     return { shown: kept, hidden: counts };
-  }, [live, hideRisky, settings.maxBudget, grades]);
+  }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly]);
 
   const { watchlist } = watch;
   const isSaved = useCallback((itemId) => Boolean(watchlist[itemId]), [watchlist]);
@@ -244,6 +247,8 @@ export default function Home() {
             onIncludeJunkChange={setIncludeJunk}
             hideRisky={hideRisky}
             onHideRiskyChange={setHideRisky}
+            guaranteedOnly={guaranteedOnly}
+            onGuaranteedOnlyChange={setGuaranteedOnly}
             listingTypes={listingTypes}
             onListingTypesChange={setListingTypes}
             grades={grades}
