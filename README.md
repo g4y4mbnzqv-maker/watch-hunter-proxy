@@ -7,7 +7,8 @@ Scans eBay UK auctions and Buy It Now listings for a watch brand and shows which
 1. Create a Production keyset at https://developer.ebay.com/my/keys.
 2. Copy `.env.example` to `.env.local` and fill in `EBAY_CLIENT_ID` (App ID) and `EBAY_CLIENT_SECRET` (Cert ID). On Vercel, add the same two variables under Project Settings > Environment Variables.
 3. Optional: set `APP_PASSCODE` to lock the app. Visitors then need the passcode before they can see anything or call the API, and a browser stays unlocked for 90 days. Changing the passcode signs everyone out. Leave it unset to keep the app open.
-4. Install and run:
+4. Optional, for the price index: in Vercel, open Storage, choose Create Database, pick Neon (free) and connect it to this project, which sets `DATABASE_URL`. Then add `CRON_SECRET` (any long random string) under Environment Variables and redeploy. Without a database the Prices tab shows these steps and nothing is recorded.
+5. Install and run:
 
 ```bash
 npm install
@@ -50,8 +51,20 @@ It then opens full screen from its own icon.
 - When a brand scan finds nothing, the page says why: either eBay has no UK auctions for it (with a count of UK Buy It Now listings and a link to them, from one extra call), or eBay found auctions that the replica, parts or UK filters removed, with how many of each.
 - Prices include the cheapest listed postage option. When eBay doesn't list a postage cost (collection only or calculated postage), the card shows "postage unknown" and postage counts as zero.
 
+## Price index
+
+The Prices tab tracks asking prices per model over time.
+
+- Every scan saves a daily figure for each model it finds: the median, lowest and highest Buy It Now asking price and the number of listings, split by condition. Saving runs alongside the scan and gives up after 2.5 seconds, so it never slows a scan down.
+- Auctions with bids and an hour or less left are saved as "closes" at their current bid. These are the nearest thing to sold prices the free Browse API gives, since eBay's sold-price data needs a licensed API.
+- Once a day (`vercel.json`, 05:17 UTC) Vercel calls `/api/harvest`, which scans auctions for the popular brands and saves the same figures, so history builds even on days you don't scan. The route only runs with `Authorization: Bearer <CRON_SECRET>`, which Vercel sends itself. On the free Hobby plan Vercel only promises the run happens within the hour.
+- The list shows each model's latest median, its change over 30 days and a 90-day sparkline, with sorting by rising, falling, listings, recent or name. Opening a model shows a chart of the asking range and closes over 30, 90 or 365 days, and a table of the figures.
+- Only daily totals are stored. Listing titles, photos, sellers and links are never saved, and a close is stored against a one-way hash of the item ID so the same auction isn't counted twice. Rows older than about 13 months are deleted on each daily run. This is meant to stay within eBay's rules on keeping listing data, but it hasn't been checked by a lawyer, so read eBay's API License Agreement if you plan to rely on it.
+- History starts from the day the database is connected. Nothing is backfilled.
+
 ## Code layout
 
+- `lib/priceIndex.js` reads and writes the price history (Neon Postgres), and `lib/harvest.js` runs the daily collection.
 - `lib/`: eBay calls and the rules behind every card (profit, models, nicknames, sellers, conditions, wording, images). No React.
 - `app/client/`: browser-side hooks and helpers. `useScanner` runs brand scans and Top deals, `useWatchlist` keeps saved listings and alerts, `useUsage` tracks the eBay allowance, and `listings.js` holds sorting and filtering helpers.
 - `app/components/`: the pieces of the page. `page.js` holds the shared state and wires them together.
@@ -60,11 +73,11 @@ Results are drawn 24 cards at a time, with more added as you scroll. Cards are m
 
 ## API usage
 
-Each scan makes 1 search call per listing type, plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call per listing type, plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Tests
 
-`tests/` covers the profit maths, condition grading, model reference matching, seller ratings, the replica, junk and wording filters, and the eBay comparables and usage logic against a fake eBay. They run with Vitest and don't call eBay.
+`tests/` covers the profit maths, condition grading, model reference matching, seller ratings, the replica, junk and wording filters, the eBay comparables and usage logic against a fake eBay, and the price index against an in-memory Postgres (PGlite). They run with Vitest and don't call eBay.
 
 ## Known limits
 
