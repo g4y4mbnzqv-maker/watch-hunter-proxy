@@ -13,7 +13,7 @@ const FIELDS = [
     key: "maxBudget",
     label: "Maximum spend",
     prefix: "£",
-    help: "Hides auctions already costing more than this, including postage. 0 means no limit.",
+    help: "Hides listings already costing more than this, including postage, and keeps \"Bid up to\" within it. 0 means no limit.",
   },
   {
     key: "resalePercent",

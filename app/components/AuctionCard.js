@@ -425,6 +425,7 @@ function BidHeadroom({ item }) {
       <div className="mb-1.5 flex items-baseline justify-between text-xs">
         <span className="text-zinc-400">
           Bid up to <span className="font-semibold text-zinc-50">{formatGbp(item.maxBid)}</span>
+          {item.budgetCapped && <span className="text-zinc-500"> · your spending limit</span>}
         </span>
         <span className={headroom > 0 ? "text-emerald-300" : "text-rose-300"}>
           {headroom > 0 ? `${formatGbp(headroom)} headroom` : "Already past your limit"}
@@ -448,7 +449,16 @@ function OfferLimit({ item }) {
   if (item.currentBid <= item.maxBid) return null;
   return (
     <p className="text-xs text-zinc-400">
-      {item.bestOffer ? (
+      {item.budgetCapped ? (
+        item.bestOffer ? (
+          <>
+            Over your spending limit. Offer up to{" "}
+            <span className="font-semibold text-zinc-50">{formatGbp(item.maxBid)}</span> to stay within it.
+          </>
+        ) : (
+          <>Over your spending limit.</>
+        )
+      ) : item.bestOffer ? (
         <>
           Offer up to <span className="font-semibold text-zinc-50">{formatGbp(item.maxBid)}</span>{" "}
           to clear your target profit.

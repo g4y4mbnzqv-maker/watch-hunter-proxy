@@ -46,6 +46,22 @@ describe("analyse", () => {
     expect(tiny.maxBid).toBe(0);
   });
 
+  it("keeps the bid limit within Maximum spend, postage included", () => {
+    const pricey = { currentBid: 300, postage: 10, comps: { median: 1200, count: 8 } };
+    const open = analyse(pricey, DEFAULT_SETTINGS);
+    expect(open.maxBid).toBe(842);
+    expect(open.budgetCapped).toBe(false);
+
+    const capped = analyse(pricey, { ...DEFAULT_SETTINGS, maxBudget: 600 });
+    expect(capped.maxBid).toBe(590);
+    expect(capped.budgetCapped).toBe(true);
+    // Profit is still worked out at the current price
+    expect(capped.profit).toBe(open.profit);
+
+    // A limit above the profit limit changes nothing
+    expect(analyse(item, { ...DEFAULT_SETTINGS, maxBudget: 600 })).toMatchObject({ maxBid: 106, budgetCapped: false });
+  });
+
   it("treats unknown postage as free", () => {
     expect(analyse({ ...item, postage: null }, DEFAULT_SETTINGS).profit).toBe(62.9);
   });
