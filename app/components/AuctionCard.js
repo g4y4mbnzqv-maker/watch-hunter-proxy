@@ -98,7 +98,9 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
         <div className="pointer-events-none absolute bottom-3 left-4 right-14">
           {/* A shaky estimate shouldn't headline the card */}
           {item.profit !== null && !ended && item.status === "check" && (
-            <div className="text-xl font-semibold text-amber-200 drop-shadow">Estimate unsure</div>
+            <div className="text-xl font-semibold text-amber-200 drop-shadow">
+              {item.tooCheap ? "Too cheap to trust" : "Estimate unsure"}
+            </div>
           )}
           {item.profit !== null && !ended && item.status !== "check" && (
             <>
@@ -187,6 +189,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
         {item.comps && <PriceRange comps={item.comps} />}
 
         <SellerLine seller={item.seller} check={item.sellerCheck} />
+        {!ended && <FakeChecks item={item} />}
         <WordingNote title={item.title} />
         {!ended && item.overlooked?.length > 0 && <OverlookedNote reasons={item.overlooked} />}
         {item.roughReasons?.length > 0 && <RoughNote reasons={item.roughReasons} />}
@@ -200,7 +203,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
         ) : (
           <>
             {/* A limit from a shaky estimate could cost real money */}
-            {item.maxBid !== null && !item.roughReasons?.length && (
+            {item.maxBid !== null && !item.roughReasons?.length && !item.tooCheap && (
               isBuyItNow ? <OfferLimit item={item} /> : <BidHeadroom item={item} />
             )}
             <ResaleEditor item={item} onSetResale={onSetResale} />
@@ -364,6 +367,44 @@ function PriceRange({ comps }) {
       {comps.ignored > 0 &&
         `, ${comps.ignored} very high or low ${comps.ignored === 1 ? "price" : "prices"} ignored`}
     </p>
+  );
+}
+
+// Warning signs of a fake, and eBay's own check where the listing has one
+function FakeChecks({ item }) {
+  return (
+    <>
+      {item.authenticityGuarantee && (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200 ring-1 ring-emerald-400/20">
+          <ShieldIcon />
+          <span>
+            <span className="font-semibold">Authenticity Guarantee.</span> eBay's experts check it before it reaches you.
+          </span>
+        </div>
+      )}
+      {item.tooCheap && (
+        <Note tone="rose">
+          Too cheap to trust: {formatGbp(item.totalCost)} is under half the cheapest of {item.comps.count} similar
+          listings ({formatGbp(item.comps.low)}). That usually means a fake, a part or a mistake. Ask for photos of the
+          caseback, serial and papers, and only pay through eBay.
+        </Note>
+      )}
+      {!item.tooCheap && item.oftenFaked && !item.authenticityGuarantee && (
+        <Note>
+          {item.oftenFaked} is often faked. Before bidding, ask for photos of the caseback, the movement and the serial,
+          check the serial matches any papers, and only pay through eBay.
+        </Note>
+      )}
+    </>
+  );
+}
+
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z" strokeLinejoin="round" />
+      <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
