@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import CardGrid from "./CardGrid";
+import SwipeDeck from "./SwipeDeck";
 import { EmptyState, Stat } from "./Placeholders";
 import { formatGbp } from "./format";
 import { SORTERS, endsWithin, hiddenNote } from "../client/listings";
@@ -18,6 +19,11 @@ const SORTS = [
   { key: "profit", label: "Highest profit" },
   { key: "headroom", label: "Most headroom" },
   { key: "roi", label: "Best return" },
+];
+
+const LAYOUTS = [
+  { key: "cards", label: "Cards" },
+  { key: "swipe", label: "Swipe" },
 ];
 
 const IN_VIEW = {
@@ -38,6 +44,8 @@ export default function Results({
   onViewChange,
   sort,
   onSortChange,
+  layout,
+  onLayoutChange,
   now,
   isSaved,
   onToggleSave,
@@ -96,20 +104,49 @@ export default function Results({
           ))}
         </div>
 
-        <select
-          value={sort}
-          onChange={(e) => onSortChange(e.target.value)}
-          className="rounded-full bg-zinc-900/80 px-3.5 py-1.5 text-sm text-zinc-200 outline-none ring-1 ring-white/10"
-        >
-          {SORTS.map((option) => (
-            <option key={option.key} value={option.key}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <div className="flex rounded-full p-0.5 ring-1 ring-white/10" role="group" aria-label="Layout">
+            {LAYOUTS.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => onLayoutChange(option.key)}
+                aria-pressed={layout === option.key}
+                className={`rounded-full px-3 py-1 text-sm font-medium transition ${
+                  layout === option.key ? "bg-white/10 text-zinc-50" : "text-zinc-400 hover:text-zinc-100"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={sort}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="rounded-full bg-zinc-900/80 px-3.5 py-1.5 text-sm text-zinc-200 outline-none ring-1 ring-white/10"
+          >
+            {SORTS.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {visible.length > 0 ? (
+      {layout === "swipe" && visible.length > 0 ? (
+        <SwipeDeck
+          // A new scan, view or sort deals again from the top
+          key={`${scanId}|${view}|${sort}`}
+          items={visible}
+          now={now}
+          isSaved={isSaved}
+          onToggleSave={onToggleSave}
+          onSetResale={onSetResale}
+          onShowCards={() => onLayoutChange("cards")}
+        />
+      ) : visible.length > 0 ? (
         <CardGrid
           // A new scan, view or sort starts again from the first page
           key={`${scanId}|${view}|${sort}`}
