@@ -1,3 +1,5 @@
+import { niche } from "@/lib/niche";
+
 // Small presentational pieces used around the results
 
 export function Stat({ label, value, note, accent = false }) {
@@ -52,11 +54,10 @@ export function Hero() {
   return (
     <div className="mb-6 mt-2 sm:mt-6">
       <h1 className="bg-gradient-to-br from-white via-white to-emerald-300 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:text-5xl">
-        Find watches worth flipping
+        {niche.heroTitle}
       </h1>
       <p className="mt-2 max-w-xl text-sm text-zinc-400 sm:text-base">
-        UK auctions and Buy It Now listings priced below what they resell for, after fees and
-        postage.
+        {niche.heroBody}
       </p>
     </div>
   );
@@ -69,7 +70,7 @@ const STEPS = [
   },
   {
     title: "Estimate resale",
-    body: "Compares current asking prices for the same model, matched by reference or by well-known names like Turtle or Black Bay.",
+    body: `Compares current asking prices for the same model, ${niche.matchExplainer}.`,
   },
   {
     title: "Bid to your limit",

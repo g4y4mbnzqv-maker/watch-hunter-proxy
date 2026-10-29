@@ -1,6 +1,7 @@
 "use client";
 
 import UsageMeter from "./UsageMeter";
+import { niche } from "@/lib/niche";
 
 const TABS = [
   { key: "scan", label: "Find deals" },
@@ -17,7 +18,7 @@ export default function AppHeader({ mode, onModeChange, watchCount, usage, showS
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div className="flex items-center gap-2.5">
           <img src="/icons/icon-192.png" alt="" className="h-8 w-8 rounded-xl ring-1 ring-white/10" />
-          <span className="text-lg font-semibold tracking-tight text-white">Watch Hunter</span>
+          <span className="text-lg font-semibold tracking-tight text-white">{niche.appName}</span>
         </div>
 
         <nav className="order-last flex w-full rounded-full bg-white/5 p-1 ring-1 ring-white/10 sm:order-none sm:ml-4 sm:w-auto">

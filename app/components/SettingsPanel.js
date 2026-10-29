@@ -1,6 +1,8 @@
 "use client";
 
 import { DEFAULT_SETTINGS } from "@/lib/profit";
+import { niche } from "@/lib/niche";
+import { isUkPostcode } from "@/lib/postcode";
 
 const FIELDS = [
   {
@@ -19,7 +21,7 @@ const FIELDS = [
     key: "resalePercent",
     label: "Expected sale price",
     suffix: "%",
-    help: "Share of current Buy It Now asking prices you expect to get. Asking prices usually sit above what watches sell for.",
+    help: "Share of current Buy It Now asking prices you expect to get. Asking prices usually sit above what things really sell for.",
   },
   {
     key: "sellingFeePercent",
@@ -35,7 +37,7 @@ const FIELDS = [
   },
   {
     key: "extraCosts",
-    label: "Extra costs per watch",
+    label: `Extra costs per ${niche.noun.one}`,
     prefix: "£",
     help: "Battery, service, cleaning or a new strap.",
   },
@@ -75,7 +77,55 @@ export default function SettingsPanel({ settings, onChange }) {
         Seller checks
       </h3>
       <FieldGrid fields={SELLER_FIELDS} settings={settings} onChange={onChange} />
+
+      {niche.collection && <CollectionFields settings={settings} onChange={onChange} />}
     </section>
+  );
+}
+
+const DISTANCES = [0, 10, 25, 50, 100];
+
+// Where you'd collect from, for apps where most things are collection only
+function CollectionFields({ settings, onChange }) {
+  const postcode = settings.postcode ?? "";
+  const valid = !postcode || isUkPostcode(postcode);
+  return (
+    <>
+      <h3 className="mb-4 mt-6 text-sm font-medium text-zinc-100">Collection</h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="block">
+          <span className="text-xs font-medium text-zinc-300">Your postcode</span>
+          <input
+            type="text"
+            autoComplete="postal-code"
+            value={postcode}
+            onChange={(e) => onChange({ ...settings, postcode: e.target.value.toUpperCase() })}
+            placeholder="CB1 2AB"
+            className="mt-1.5 w-full rounded-xl bg-black/30 px-3 py-2 text-sm uppercase text-zinc-100 outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+          />
+          <span className={`mt-1.5 block text-[11px] leading-snug ${valid ? "text-zinc-500" : "text-rose-300"}`}>
+            {valid ? "Your full postcode. Only sent to eBay, to find bikes near you." : "That doesn't look like a full UK postcode."}
+          </span>
+        </label>
+        <label className="block">
+          <span className="text-xs font-medium text-zinc-300">How far you'd travel</span>
+          <select
+            value={settings.collectionMiles ?? 0}
+            onChange={(e) => onChange({ ...settings, collectionMiles: Number(e.target.value) })}
+            className="mt-1.5 w-full rounded-xl bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none ring-1 ring-white/10 focus:ring-emerald-400"
+          >
+            {DISTANCES.map((miles) => (
+              <option key={miles} value={miles}>
+                {miles ? `Collection within ${miles} miles` : "Anywhere in the UK"}
+              </option>
+            ))}
+          </select>
+          <span className="mt-1.5 block text-[11px] leading-snug text-zinc-500">
+            With a distance set, scans only show bikes offering collection that close to you.
+          </span>
+        </label>
+      </div>
+    </>
   );
 }
 

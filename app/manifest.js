@@ -1,9 +1,11 @@
+import { niche } from "@/lib/niche";
+
 // Lets phones install the app to the home screen and open it full screen
 export default function manifest() {
   return {
-    name: "Watch Hunter",
-    short_name: "Watch Hunter",
-    description: "Find eBay UK watch auctions you can resell at a profit",
+    name: niche.appName,
+    short_name: niche.appName,
+    description: niche.description,
     start_url: "/",
     display: "standalone",
     background_color: "#09090b",

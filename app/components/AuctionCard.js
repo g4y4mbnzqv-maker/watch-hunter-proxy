@@ -7,6 +7,7 @@ import { modelKey } from "@/lib/models";
 import { cautionWords } from "@/lib/wording";
 import { gradeLabel } from "@/lib/condition";
 import { ebayImage } from "@/lib/images";
+import { niche } from "@/lib/niche";
 
 const STATUS_STYLES = {
   deal: {
@@ -198,7 +199,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
           <p className="text-xs text-zinc-500">
             {isBuyItNow
               ? "This listing has sold or ended."
-              : "This auction has ended. Figures use the last bid Watch Hunter saw."}
+              : `This auction has ended. Figures use the last bid ${niche.appName} saw.`}
           </p>
         ) : (
           <>
@@ -374,6 +375,7 @@ function PriceRange({ comps }) {
 function FakeChecks({ item }) {
   return (
     <>
+      {niche.everyListingNote && <Note>{niche.everyListingNote}</Note>}
       {item.authenticityGuarantee && (
         <div className="flex items-center gap-2 rounded-xl bg-emerald-400/10 px-3 py-2 text-xs text-emerald-200 ring-1 ring-emerald-400/20">
           <ShieldIcon />
@@ -385,14 +387,14 @@ function FakeChecks({ item }) {
       {item.tooCheap && (
         <Note tone="rose">
           Too cheap to trust: {formatGbp(item.totalCost)} is under half the cheapest of {item.comps.count} similar
-          listings ({formatGbp(item.comps.low)}). That usually means a fake, a part or a mistake. Ask for photos of the
-          caseback, serial and papers, and only pay through eBay.
+          listings ({formatGbp(item.comps.low)}). That usually means a fake, a part or a mistake. Before buying,{" "}
+          {niche.fakeAdvice}, and only pay through eBay.
         </Note>
       )}
-      {!item.tooCheap && item.oftenFaked && !item.authenticityGuarantee && (
+      {/* Bikes' frame number note already covers this */}
+      {!item.tooCheap && item.oftenFaked && !item.authenticityGuarantee && !niche.everyListingNote && (
         <Note>
-          {item.oftenFaked} is often faked. Before bidding, ask for photos of the caseback, the movement and the serial,
-          check the serial matches any papers, and only pay through eBay.
+          {item.oftenFaked} is often faked. Before bidding, {niche.fakeAdvice}, and only pay through eBay.
         </Note>
       )}
     </>
@@ -411,7 +413,7 @@ function ShieldIcon() {
 function RoughNote({ reasons }) {
   return (
     <Note>
-      Rough estimate: {reasons.join(", ")}. Check Chrono24 before trusting this profit, then set
+      Rough estimate: {reasons.join(", ")}. Check {niche.roughCheck} before trusting this profit, then set
       your own value to see a limit.
     </Note>
   );
@@ -514,8 +516,8 @@ function OfferLimit({ item }) {
   );
 }
 
-// Words that say nothing about which watch it is
-const FILLER_WORDS = /^(mens|men's|ladies|womens|women's|gents|vintage|rare|watch|wristwatch|automatic|quartz|new|used|boxed|genuine|original|stunning|superb|lovely|nice|great|wow)$/i;
+// Words that say nothing about which model it is
+const FILLER_WORDS = niche.fillerWords;
 
 // What to search other sites for: the model reference or name when there is
 // one, otherwise the first few meaningful words of the title
@@ -536,24 +538,7 @@ function PriceChecks({ item }) {
   const query = searchQuery(item);
   if (!query) return null;
 
-  const sites = [
-    {
-      // Finished listings that sold, the nearest free check on real prices
-      name: "eBay sold listings",
-      short: "Sold",
-      url: `https://www.ebay.co.uk/sch/i.html?${new URLSearchParams({ _nkw: query, LH_Sold: "1", LH_Complete: "1" })}`,
-    },
-    {
-      name: "Chrono24",
-      short: "C24",
-      url: `https://www.chrono24.co.uk/search/index.htm?${new URLSearchParams({ query, dosearch: "true" })}`,
-    },
-    {
-      name: "Vinted",
-      short: "Vinted",
-      url: `https://www.vinted.co.uk/catalog?${new URLSearchParams({ search_text: query })}`,
-    },
-  ];
+  const sites = niche.priceSites(query);
 
   return (
     <>

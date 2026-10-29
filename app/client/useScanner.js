@@ -9,7 +9,7 @@ export const TOP_DEALS = "Top deals";
 const TOP_DEALS_CONCURRENCY = 3;
 
 // Brand scans and Top deals: the listings found and the state around them
-export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned }) {
+export function useScanner({ listingTypes, includeJunk, pickup, onLimitHit, onScanned }) {
   const [results, setResults] = useState([]);
   const [scannedBrand, setScannedBrand] = useState(null);
   // What eBay returned for the last single-brand scan, to explain empty ones
@@ -22,6 +22,10 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
   async function fetchBrand(query) {
     const params = new URLSearchParams({ brand: query, types: listingTypes.join(",") });
     if (includeJunk) params.set("includeJunk", "1");
+    if (pickup) {
+      params.set("postcode", pickup.postcode);
+      params.set("miles", String(pickup.miles));
+    }
 
     const res = await fetch(`/api/scan?${params}`);
     const data = await res.json();
