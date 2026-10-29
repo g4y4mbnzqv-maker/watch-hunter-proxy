@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { formatGbp, formatTimeLeft, hoursLeft } from "./format";
 import Gallery from "./Gallery";
 import { modelKey } from "@/lib/models";
@@ -47,7 +47,11 @@ const SELLER_STYLES = {
   risky: { dot: "bg-rose-500", text: "text-rose-300" },
 };
 
-export default function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
+// Memoised: a card only redraws when its listing, save state or the clock
+// changes, not on every keystroke elsewhere on the page
+export default memo(AuctionCard);
+
+function AuctionCard({ item, now, onSetResale, saved, onToggleSave }) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const style = STATUS_STYLES[item.status];
   const isBuyItNow = item.listingType === "BUY_IT_NOW";
