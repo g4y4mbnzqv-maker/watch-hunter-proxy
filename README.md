@@ -109,11 +109,19 @@ With a database connected and `APP_PASSCODE` set, your watchlist, settings, resa
 - `app/client/`: browser-side hooks and helpers. `useScanner` runs brand scans and Top deals, `useWatchlist` keeps saved listings and alerts, `useUsage` tracks the eBay allowance, and `listings.js` holds sorting and filtering helpers.
 - `app/components/`: the pieces of the page. `page.js` holds the shared state and wires them together.
 
+Speed and eBay calls:
+
+- Resale lookups (the comparable Buy It Now listings for each model) are saved in the database for 6 hours (`lib/compsStore.js`) and shared by every scan, alert check and the daily run. On Vercel each new server instance used to look every model up again; now a repeat Top deals scan costs about 18 eBay calls where it took about 290. Without a database the app falls back to remembering lookups in memory, as before.
+- The service worker keeps the app's own files (`public/sw.js`), so the app opens straight away, and still opens with no signal. Pages are fetched fresh when there's a connection. eBay data and the API are never cached.
+- Your last scan is kept in the browser for 12 hours and shown when you reopen the app, marked with its age.
+- The Roboto font is served with the app (`next/font`) instead of from Google on every visit.
+- Watchlist refreshes skip auctions that ended over 6 hours ago.
+
 Results are drawn 24 cards at a time, with more added as you scroll. Cards are memoised, profit is worked out separately from the 30-second clock, and the search box keeps its own text, so typing doesn't redraw the results.
 
 ## API usage
 
-Each scan makes 1 search call per listing type (2 for brands with known misspellings), plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. Deal alerts add a few hundred calls a day. eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call per listing type (2 for brands with known misspellings), plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the 6-hour resale cache already holds (shared through the database). The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. Deal alerts add a few hundred calls a day. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Tests
 

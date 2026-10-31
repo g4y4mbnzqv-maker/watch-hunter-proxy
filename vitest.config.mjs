@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/**/*.test.js"],
+    // Tests that start an in-memory Postgres (PGlite) or make push keys take
+    // a few seconds each, and longer when every test file runs at once
+    testTimeout: 20_000,
   },
 });

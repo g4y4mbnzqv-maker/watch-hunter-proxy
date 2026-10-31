@@ -30,3 +30,13 @@ describe("stock reminders", () => {
     expect(stockReminders([deal({ soldFor: 200 }), deal({ listedOn: "2026-11-25", listedAt: 200 })], DEFAULT_SETTINGS, now)).toEqual([]);
   });
 });
+
+describe("watchlist refresh", async () => {
+  const { longFinished } = await import("../app/client/useWatchlist");
+  const now = Date.parse("2026-11-30T12:00:00Z");
+  it("stops checking auctions that ended over six hours ago", () => {
+    expect(longFinished({ listingType: "AUCTION", endTime: "2026-11-30T01:00:00Z" }, now)).toBe(true);
+    expect(longFinished({ listingType: "AUCTION", endTime: "2026-11-30T09:00:00Z" }, now)).toBe(false);
+    expect(longFinished({ listingType: "BUY_IT_NOW", endTime: null }, now)).toBe(false);
+  });
+});
