@@ -81,7 +81,21 @@ The Sales tab records watches you buy and sell.
 - Add the sale price, date and where it sold. eBay fees default to the percentage in Settings and Vinted to none; type your own to override.
 - The tab shows profit so far, sales, stock still unsold and the median days to sell.
 - After 3 sales of watches that had an estimate, it shows what yours sold for as a share of the asking median (by brand too, once a brand has 3), and offers to use that as "Expected sale price". Brands with 3 or more sales can each get their own figure ("Use my figure for Seiko"), which estimates for that brand then use, and the card says so. This replaces the 85% guess with your own results.
+- **Review** at the top of the tab: profit, sales, buys and spend over the last 7 and 30 days, the brands earning most and least per watch (2 or more sales each), and the models whose asking prices moved most in the price index.
+- **Stock reminders:** a watch bought a week ago and not listed gets a nudge. Add "Listed on" and "Listed at" to an unsold watch, and if it hasn't sold after three weeks the app suggests 10% off, ending in 9, never below the price that gets your money back after eBay fees. "Drop to £X" records the new price; change the eBay listing too (`lib/stock.js`).
+- **Draft a listing** on an unsold watch writes a title (tidied, within eBay's 80 characters) and a description with the brand, model, reference and case size filled in and [brackets] for the rest, for eBay or Vinted, with copy buttons. It suggests an eBay price at the asking median with offers on and the lowest offer to accept, and a Vinted price about 5% lower, since Vinted buyers pay a protection fee (`lib/listingDraft.js`). Nothing is posted anywhere.
 - "Download CSV" saves a copy for backups and tax records.
+
+## Deal alerts while the app is closed
+
+Settings, then Deal alerts, signs a phone or computer up for push notifications. About once an hour from 7am to 11pm UK time, `/api/alerts/run` checks the newest Buy It Now listings for your Top deals brands, works out profit with your synced settings and resale values, and notifies you of each new deal: a confident "Deal" (not "Check value" or "Too cheap to trust"), within your Maximum spend, from a seller who isn't risky. Up to 5 alerts per run, with a summary for more. The first check of each brand only notes what's already listed, so you aren't sent old listings.
+
+Setup:
+1. Alerts need the database and `APP_PASSCODE`, like syncing. The push keys are made automatically and kept in the database.
+2. The schedule is a GitHub Actions workflow (`.github/workflows/deal-alerts.yml`), since Vercel's free plan only runs jobs once a day. In GitHub, open the repository's Settings, then Secrets and variables, then Actions, and add `APP_URL` (the app's address, such as `https://watch-hunter-proxy.vercel.app`) and `CRON_SECRET` (the same value as in Vercel). Until both are there, the workflow does nothing. GitHub can run scheduled jobs late, or skip some when busy.
+3. On iPhone, add the app to the home screen first and turn alerts on from there (iOS 16.4 or later).
+
+Each run costs about two eBay searches per brand, plus resale lookups for new listings only: a few hundred calls a day with nine brands.
 
 ## Syncing between devices
 
@@ -99,7 +113,7 @@ Results are drawn 24 cards at a time, with more added as you scroll. Cards are m
 
 ## API usage
 
-Each scan makes 1 search call per listing type (2 for brands with known misspellings), plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. eBay's Browse API is free, with a default limit of 5,000 calls a day.
+Each scan makes 1 search call per listing type (2 for brands with known misspellings), plus 1 call for each new model found (up to about 50, usually far fewer), six at a time. Overlapping requests for the same token, category or model share one eBay call. Top deals runs one scan per popular brand, so it uses roughly nine times as many calls, less whatever the hour-long resale cache already holds. The daily price harvest costs roughly one Top deals run (auctions only), so leave some allowance for it. Deal alerts add a few hundred calls a day. eBay's Browse API is free, with a default limit of 5,000 calls a day.
 
 ## Tests
 
