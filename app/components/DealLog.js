@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyState, Stat } from "./Placeholders";
 import { formatGbp } from "./format";
 import { MIN_SALES_FOR_RATIO, PLATFORMS, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
-import { niche } from "@/lib/niche";
 
-// What you bought and sold: running profit, and what your real sale
+// Watches you bought and sold: running profit, and what your real sale
 // prices say about the "Expected sale price" setting
 export default function DealLog({ dealBook, settings, onSettingsChange, openId, onFindDeals }) {
   const { deals, logPurchase, updateDeal, removeDeal } = dealBook;
@@ -26,7 +25,7 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
     const blob = new Blob([toCsv(deals, settings)], { type: "text/csv" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `${niche.key}-deals-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `watch-hunter-deals-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   }
@@ -35,8 +34,8 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
     return (
       <EmptyState
         title="No deals logged yet."
-        body={`When you win or buy a ${niche.noun.one}, tap "I bought this" on it in your watchlist, or add it here. Log the sale when it goes, and the app learns what your ${niche.noun.many} really sell for.`}
-        action={`Add a ${niche.noun.one}`}
+        body='When you win or buy a watch, tap "I bought this" on it in your watchlist, or add it here. Log the sale when it goes, and the app learns what your watches really sell for.'
+        action="Add a watch"
         onAction={addManual}
       />
     );
@@ -55,7 +54,7 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-medium text-zinc-300">
-          {deals.length} {deals.length === 1 ? niche.noun.one : niche.noun.many}
+          {deals.length} {deals.length === 1 ? "watch" : "watches"}
         </h2>
         <div className="flex gap-2">
           <button
@@ -70,7 +69,7 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
             onClick={addManual}
             className="rounded-full bg-white px-3.5 py-2 text-sm font-semibold text-zinc-950 hover:bg-zinc-200"
           >
-            Add a {niche.noun.one}
+            Add a watch
           </button>
         </div>
       </div>
@@ -85,7 +84,7 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
             onToggle={() => setOpen((current) => (current === deal.id ? null : deal.id))}
             onChange={(changes) => updateDeal(deal.id, changes)}
             onRemove={() => {
-              if (window.confirm(`Delete this ${niche.noun.one} from your deal log?`)) removeDeal(deal.id);
+              if (window.confirm("Delete this watch from your deal log?")) removeDeal(deal.id);
             }}
           />
         ))}
@@ -106,7 +105,7 @@ function RatioPanel({ ratio, settings, onSettingsChange }) {
   if (ratio.percent === null) {
     return (
       <div className="mb-6 rounded-2xl bg-zinc-900/60 p-4 text-sm text-zinc-400 ring-1 ring-white/5">
-        After {MIN_SALES_FOR_RATIO} sales of {niche.noun.many} the app had an estimate for, this shows what yours really sell for
+        After {MIN_SALES_FOR_RATIO} sales of watches the app had an estimate for, this shows what yours really sell for
         compared with eBay asking prices, so you can set "Expected sale price" from real results.
         {ratio.count > 0 && ` ${ratio.count} so far.`}
       </div>
@@ -118,7 +117,7 @@ function RatioPanel({ ratio, settings, onSettingsChange }) {
   return (
     <div className="mb-6 rounded-2xl bg-sky-400/10 p-4 text-sm text-sky-100 ring-1 ring-sky-400/20">
       <p>
-        Across {ratio.count} sales, your {niche.noun.many} sold for <strong className="tabular-nums">{ratio.percent}%</strong> of the
+        Across {ratio.count} sales, your watches sold for <strong className="tabular-nums">{ratio.percent}%</strong> of the
         median asking price when you bought them. Settings assume {current}%.
       </p>
       {ratio.byBrand.length > 1 && (
@@ -153,7 +152,7 @@ function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
           <div className="h-12 w-12 shrink-0 rounded-xl bg-zinc-800" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm text-zinc-100">{deal.title || `Untitled ${niche.noun.one}`}</div>
+          <div className="truncate text-sm text-zinc-100">{deal.title || "Untitled watch"}</div>
           <div className="text-xs text-zinc-500">
             Bought {formatGbp(Number(deal.boughtFor) || 0)}
             {sold ? ` · sold ${formatGbp(Number(deal.soldFor))}${days !== null ? ` after ${days} ${days === 1 ? "day" : "days"}` : ""}` : " · in stock"}
@@ -166,7 +165,7 @@ function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
 
       {open && (
         <div className="grid gap-3 border-t border-white/5 p-3 sm:grid-cols-2">
-          <Field label={niche.noun.one[0].toUpperCase() + niche.noun.one.slice(1)} wide>
+          <Field label="Watch" wide>
             <input type="text" value={deal.title} onChange={(e) => onChange({ title: e.target.value })} className={INPUT} />
           </Field>
           <Field label="Brand">

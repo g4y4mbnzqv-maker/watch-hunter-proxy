@@ -203,7 +203,7 @@ function ModelDetail({ model, onBack }) {
         ← All models
       </button>
       <h1 className="text-2xl font-bold tracking-tight text-white">{model.label}</h1>
-      <p className="mt-1 text-sm text-zinc-400">{model.brand ?? "Model"} price history</p>
+      <p className="mt-1 text-sm text-zinc-400">{model.brand ?? "Watch"} price history</p>
 
       {error && <Notice tone="rose">{error}</Notice>}
       {!history && !error && <p className="mt-6 text-sm text-zinc-400">Loading history…</p>}
