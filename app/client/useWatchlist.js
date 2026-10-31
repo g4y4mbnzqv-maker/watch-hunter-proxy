@@ -10,7 +10,7 @@ const ENDING_SOON_MINUTES = 10;
 
 // Saved listings, their refresh from eBay, and ending-soon alerts
 export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefreshed }) {
-  const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {});
+  const [watchlist, setWatchlist] = useStoredState("wh-watchlist", {}, { sync: true });
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(null);
   const [refreshedAt, setRefreshedAt] = useState(null);

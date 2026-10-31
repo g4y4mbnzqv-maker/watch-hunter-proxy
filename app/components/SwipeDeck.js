@@ -14,7 +14,7 @@ const EXIT_MS = 220;
 // One listing at a time: swipe right to save, left to skip. Give it a new
 // key to deal again from the top.
 export default function SwipeDeck({ items, now, isSaved, onToggleSave, onSetResale, onShowCards }) {
-  const [skipped, setSkipped] = useStoredState("wh-skipped", {});
+  const [skipped, setSkipped] = useStoredState("wh-skipped", {}, { sync: true });
   // Swiped since the deck opened, so saved listings leave the deck too
   const [done, setDone] = useState(() => new Set());
   const [history, setHistory] = useState([]);

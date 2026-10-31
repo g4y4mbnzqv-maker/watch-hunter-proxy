@@ -33,7 +33,11 @@ It then opens full screen from its own icon.
 - Replicas and lookalikes ("homage", "replica", "fake", "clone", "1:1", "Rolex style", "Submariner-inspired" and similar) are always dropped, from auctions and from the prices used for resale estimates.
 - When a title has no reference, `lib/nicknames.js` looks for a well-known model name with its brand, such as "Seiko Turtle", "Casio Royal Oak", "Omega Moonwatch" or "Tudor Black Bay", and resale is estimated from other listings known by the same name alone. The card says when prices were matched by name. Values you type on these cards are saved for the model name.
 - `lib/models.js` pulls a model reference (SKX007, 6139-6002, CA0695-84E and so on) out of each title. For each reference, the app looks up current Buy It Now listings in the same condition as the auction (new or pre-owned) and takes the median asking price. If fewer than 3 listings match the condition, it falls back to listings in any condition, and the card says which it used. A reference needs at least 3 matching listings to get an estimate. These lookups are cached for an hour.
+- Estimates match case details where the title gives them (`lib/caseDetails.js`): a 40mm watch is priced from listings within 2mm of 40mm, and solid gold or platinum only from the same metal (plated and gold-tone count as steel). If fewer than 3 listings match that closely, the model alone is used. The card says when size or metal was matched. This uses the same eBay searches, so it costs no extra calls.
+- Once the price index has history for a model, the card shows which way its asking prices have moved over about 30 days.
 - `lib/profit.js` turns that into a resale value, profit and the most you can bid. The defaults are a resale value of 85% of the median asking price, 13% selling fees, £5 postage to your buyer and a £30 target profit. You can change all of them under Settings.
+- Each card also shows the profit if sold on Vinted instead, where UK sellers pay no fee and the buyer pays postage (the fee is adjustable in Settings in case that changes).
+- On auctions with room under your limit, "Snipe with Gixen" shows the eBay item number and your "Bid up to" figure with copy buttons, and a link to Gixen to paste them in. Nothing is sent to Gixen from the app.
 - `lib/wording.js` spots title phrases such as "untested", "sold as seen", "no returns", "needs a service" or "loses time", and the card shows a note to read the listing first.
 - Each card shows the lowest and highest Buy It Now asking prices behind its estimate. Prices more than 2.5 times above or below the median are ignored before the median is taken, and the card says how many.
 - An estimate is marked rough when it rests on fewer than 4 listings, when the dearest listing costs more than 2.5 times the cheapest, or when the title looks like a special or limited edition ("x Bamford", "limited edition", "1 of 500"). A rough estimate shows "Check value" in place of "Deal", hides the bid limit, stays out of the Deals view and the best profit figure, and asks you to check Chrono24 and set your own value. Your own values are never marked rough.
@@ -76,8 +80,12 @@ The Sales tab records watches you buy and sell.
 - On a watchlist card, "I bought this" adds the watch with its price, today's date and the median asking price the estimate came from. "Add a watch" adds one by hand.
 - Add the sale price, date and where it sold. eBay fees default to the percentage in Settings and Vinted to none; type your own to override.
 - The tab shows profit so far, sales, stock still unsold and the median days to sell.
-- After 3 sales of watches that had an estimate, it shows what yours sold for as a share of the asking median (by brand too, once a brand has 3), and offers to use that as "Expected sale price". This replaces the 85% guess with your own results.
-- The log is kept in this browser only. "Download CSV" saves a copy for backups and tax records.
+- After 3 sales of watches that had an estimate, it shows what yours sold for as a share of the asking median (by brand too, once a brand has 3), and offers to use that as "Expected sale price". Brands with 3 or more sales can each get their own figure ("Use my figure for Seiko"), which estimates for that brand then use, and the card says so. This replaces the 85% guess with your own results.
+- "Download CSV" saves a copy for backups and tax records.
+
+## Syncing between devices
+
+With a database connected and `APP_PASSCODE` set, your watchlist, settings, resale values, sales log, Top deals brands, filters and skipped listings are saved to the database (`lib/userState.js`, `/api/state`) as well as the browser, so your phone and computer show the same. Each item is saved whole with the time it changed, and the newest change wins. The app catches up when it comes back into view. Data saved on two devices before syncing was switched on is combined for the watchlist, resale values, skipped listings and sales log; for settings and filters the first device to sync wins. Alerts and the cards or swipe layout stay per device. Without a passcode, syncing stays off so nobody else can read your data, and Settings says why.
 
 ## Code layout
 
