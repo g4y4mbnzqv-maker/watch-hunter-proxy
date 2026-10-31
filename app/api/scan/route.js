@@ -1,5 +1,6 @@
 import { searchListings, getComparables, EbayError } from "@/lib/ebay";
 import { recordScanQuietly } from "@/lib/harvest";
+import { isGem } from "@/lib/gems";
 
 const LISTING_TYPES = ["AUCTION", "BUY_IT_NOW"];
 
@@ -30,6 +31,14 @@ export async function GET(req) {
   }
 
   try {
+    // Hidden gems: unbranded cheap listings, judged by eye, so no resale
+    // lookups and nothing for the price index
+    if (searchParams.get("gems") === "1") {
+      const { items, stats } = await searchListings(brand, { includeJunk, types });
+      const gems = items.filter((item) => isGem(item)).map((item) => ({ ...item, comps: null }));
+      return Response.json({ brand, count: gems.length, stats, limitReached: false, results: gems });
+    }
+
     const { items: listings, stats } = await searchListings(brand, { includeJunk, types });
     let limitReached = false;
     const comps = await getComparables(brand, listings, {

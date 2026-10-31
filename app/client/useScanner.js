@@ -5,6 +5,8 @@ import { runPool } from "./listings";
 
 // Label used in place of a brand once a Top deals scan has run
 export const TOP_DEALS = "Top deals";
+// ...and once a hidden gems search has run
+export const HIDDEN_GEMS = "Hidden gems";
 // Brands scanned at once by Top deals, to stay gentle on the eBay API
 const TOP_DEALS_CONCURRENCY = 3;
 // The last scan is shown again on reopening the app for this long
@@ -53,8 +55,9 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
     setRestoredAt(saved.savedAt);
   }, []);
 
-  async function fetchBrand(query) {
+  async function fetchBrand(query, { gems = false } = {}) {
     const params = new URLSearchParams({ brand: query, types: listingTypes.join(",") });
+    if (gems) params.set("gems", "1");
     if (includeJunk) params.set("includeJunk", "1");
 
     const res = await fetch(`/api/scan?${params}`);
@@ -94,12 +97,13 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
     }
   }
 
-  // Scans every brand given and combines the results
-  async function scanTopDeals(brands) {
+  // Scans every brand given and combines the results. With gems, runs the
+  // hidden gems searches instead, under that label.
+  async function scanTopDeals(brands, { gems = false } = {}) {
     setLoading(true);
     setError(null);
     setTopFailures([]);
-    setTopProgress({ done: 0, total: brands.length });
+    setTopProgress({ done: 0, total: brands.length, gems });
 
     const found = {};
     const failures = [];
@@ -111,14 +115,14 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
       try {
         // Once eBay refuses calls, the remaining brands would only fail too
         if (limited) throw Object.assign(new Error("Not scanned"), { skipped: true });
-        found[name] = (await fetchBrand(name)).results;
+        found[name] = (await fetchBrand(name, { gems })).results;
       } catch (err) {
         if (!err.skipped) console.error(err);
         if (err.limitReached) limited = true;
         failures.push({ name, message: err.message });
       } finally {
         done += 1;
-        setTopProgress({ done, total: brands.length });
+        setTopProgress({ done, total: brands.length, gems });
       }
     });
 
@@ -131,18 +135,19 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
       const combined = new Map();
       for (const name of brands) {
         for (const item of found[name] || []) {
-          if (!combined.has(item.itemId)) combined.set(item.itemId, { ...item, brand: name });
+          if (!combined.has(item.itemId)) combined.set(item.itemId, gems ? item : { ...item, brand: name });
         }
       }
       const combinedResults = [...combined.values()];
       const failed = brands.filter((name) => failures.some((failure) => failure.name === name));
       setResults(combinedResults);
-      setScannedBrand(TOP_DEALS);
+      const label = gems ? HIDDEN_GEMS : TOP_DEALS;
+      setScannedBrand(label);
       setScanStats(null);
       setTopFailures(failed);
       setRestoredAt(null);
-      rememberScan({ results: combinedResults, scannedBrand: TOP_DEALS, scanStats: null, topFailures: failed });
-      onScanned({ topDeals: true });
+      rememberScan({ results: combinedResults, scannedBrand: label, scanStats: null, topFailures: failed });
+      onScanned({ topDeals: !gems, gems });
     }
 
     setTopProgress(null);
