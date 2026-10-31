@@ -1,31 +1,6 @@
-# Watch Hunter, Clothes Hunter and Bike Hunter
+# Watch Hunter
 
-Scans eBay UK auctions and Buy It Now listings for a brand and shows which ones you could resell at a profit. One codebase runs three apps:
-
-| App | `NEXT_PUBLIC_NICHE` | What it hunts |
-| --- | --- | --- |
-| Watch Hunter | `watches` (the default) | Wristwatches |
-| Clothes Hunter | `clothes` | Trainers, outdoor jackets and designer clothing |
-| Bike Hunter | `bikes` | Whole bikes (no frames, parts or children's bikes) |
-
-Everything that differs between them lives in one file each under `lib/niches/`: the eBay category, brands, misspellings, model names, how to read model references, junk, replica and caution words, often-faked brands, price-check links and default settings. Everything else, from profit maths to the swipe deck, sales log and price index, is shared, so a fix or feature reaches all three.
-
-### Setting up Clothes Hunter or Bike Hunter
-
-Each app is its own Vercel project built from this same repository, with its own link, passcode, database and saved data.
-
-1. In Vercel, choose Add New, then Project, and import this repository again. Name it, for example `clothes-hunter`.
-2. Before the first deploy, open Environment Variables and add `NEXT_PUBLIC_NICHE` (`clothes` or `bikes`), `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET`, `APP_PASSCODE` and `CRON_SECRET`.
-3. Deploy. Then under Storage, create a new Neon database for this project and redeploy, so its price history stays separate.
-
-All three apps using the same eBay keys share one daily allowance of eBay calls.
-
-### What's different per app
-
-- **Clothes Hunter** reads trainer style codes such as `DD1391-100` (each colourway is its own model) and well-known names such as Barbour Bedale, North Face Nuptse or Adidas Samba. Sizes aren't compared, so check that yours sells. Price-check links go to eBay sold listings, Vinted and Depop.
-- **Bike Hunter** matches bikes by model name plus groupset, such as "Specialized Tarmac Ultegra", because the groupset changes the price a lot. Frame size and year aren't compared. Part numbers in titles are ignored. Every card reminds you to check the frame number on BikeRegister. In Settings, a postcode and distance limit scans to bikes the seller lets you collect within that distance (eBay's local pickup search). Postage to your buyer defaults to £0, since bikes are usually collected. Price-check links go to eBay sold listings, Facebook Marketplace and Gumtree.
-
-The rest of this file describes Watch Hunter; the other two work the same way.
+Scans eBay UK auctions and Buy It Now listings for a watch brand and shows which ones you could resell at a profit.
 
 ## Setup
 

@@ -4,7 +4,6 @@ import { useState } from "react";
 import BrandPicker from "./BrandPicker";
 import ConditionFilter from "./ConditionFilter";
 import ListingTypeFilter from "./ListingTypeFilter";
-import { niche } from "@/lib/niche";
 
 const GOOD_OR_BETTER = ["new", "excellent", "good"];
 
@@ -29,7 +28,7 @@ export default function SearchPanel({
   grades,
   onGradesChange,
 }) {
-  const [brand, setBrand] = useState(niche.popular[0]);
+  const [brand, setBrand] = useState("Seiko");
   const busy = loading || paused;
 
   function scan(searchBrand) {
@@ -54,7 +53,7 @@ export default function SearchPanel({
             value={brand}
             onChange={(e) => setBrand(e.target.value)}
             className="w-full rounded-2xl bg-black/30 py-3.5 pl-11 pr-4 text-zinc-50 outline-none ring-1 ring-white/10 transition placeholder:text-zinc-500 focus:ring-2 focus:ring-emerald-400/70"
-            placeholder={niche.searchPlaceholder}
+            placeholder="Brand or model, such as Seiko SKX007"
           />
         </div>
         <button
@@ -89,7 +88,7 @@ export default function SearchPanel({
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 pt-4">
         <span className="flex items-center gap-1.5 text-xs text-zinc-400">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          {niche.noun.many[0].toUpperCase() + niche.noun.many.slice(1)} located in the UK
+          Watches located in the UK
         </span>
         <Checkbox checked={includeJunk} onChange={onIncludeJunkChange}>
           Include parts and repairs
