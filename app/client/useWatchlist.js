@@ -7,6 +7,8 @@ import { SNAPSHOT_FIELDS, SORTERS, analyseAll, endsWithin, isLive, notify, pick 
 // Saved listings with this many minutes left go in the ending-soon banner
 // and, if alerts are on, trigger a notification
 const ENDING_SOON_MINUTES = 10;
+// ...and a last call this close to the end
+export const FINAL_CALL_MINUTES = 2;
 
 // Saved listings, their refresh from eBay, and ending-soon alerts
 export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefreshed }) {
@@ -15,7 +17,8 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
   const [refreshError, setRefreshError] = useState(null);
   const [refreshedAt, setRefreshedAt] = useState(null);
   const [alertsOn, setAlertsOn] = useStoredState("wh-alerts", false);
-  // Item IDs already notified, so each auction alerts once
+  // Item IDs already notified: true after the first alert, "final" after
+  // the last call, so each alerts at most twice
   const [alerted, setAlerted] = useStoredState("wh-alerted", {});
   const [alertNote, setAlertNote] = useState(null);
 
@@ -140,15 +143,22 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
       return;
     }
 
-    const fresh = endingSoon.filter((item) => !alerted[item.itemId]);
-    if (!fresh.length) return;
+    const lastCall = endingSoon.filter(
+      (item) => endsWithin(item, now, FINAL_CALL_MINUTES / 60) && alerted[item.itemId] !== "final"
+    );
+    const fresh = endingSoon.filter((item) => !alerted[item.itemId] && !lastCall.includes(item));
+    if (!fresh.length && !lastCall.length) return;
 
     fresh.forEach((item) => notify(item, now));
+    lastCall.forEach((item) => notify(item, now, { final: true }));
     setAlerted((current) => {
       // Forget listings no longer on the watchlist so the list stays small
       const next = Object.fromEntries(Object.entries(current).filter(([itemId]) => watchlist[itemId]));
       fresh.forEach((item) => {
         next[item.itemId] = true;
+      });
+      lastCall.forEach((item) => {
+        next[item.itemId] = "final";
       });
       return next;
     });

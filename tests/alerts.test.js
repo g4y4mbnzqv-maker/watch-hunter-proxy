@@ -32,7 +32,8 @@ function fakeEbay(listings) {
     if (url.pathname.includes("taxonomy")) return new Response("no", { status: 404 });
     const q = url.searchParams.get("q");
     if (q.startsWith("(")) return Response.json({ itemSummaries: [] });
-    if (url.searchParams.get("limit") === "50" && /\d/.test(q)) {
+    // Resale lookups ask for prices in pounds; listing searches don't
+    if (url.searchParams.get("filter").includes("priceCurrency:GBP")) {
       return Response.json({
         itemSummaries: [290, 300, 300, 300, 310].map((price) => ({ title: q, price: { value: String(price) }, itemLocation: { country: "GB" } })),
       });
@@ -99,5 +100,24 @@ describe("deal alerts", () => {
     const { sendTest } = await import("@/lib/alerts");
     expect(await sendTest()).toBe(0);
     expect(await countSubscriptions()).toBe(0);
+  });
+
+  it("alerts on wanted models at or under your price, once each", async () => {
+    await addSubscription(subscription);
+    await writeState("wh-top-brands", ["Nobrandatall"], 1000);
+    await writeState("wh-wanted", [{ id: "skx", query: "Seiko SKX007", maxPrice: 180 }], 1000);
+    const sent = vi.spyOn(webpush, "sendNotification").mockResolvedValue({ statusCode: 201 });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fakeEbay([bin("w1", "Seiko SKX007 jubilee", 170), bin("w2", "Seiko SKX007 boxed", 260)]);
+
+    const first = await runAlerts({ now: new Date("2026-12-01T12:00:00Z") });
+    expect(first.wanted).toBe(1);
+    expect(JSON.parse(sent.mock.calls[0][1]).title).toBe("Wanted: Seiko SKX007 at £170");
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 5 * 60_000);
+    const second = await runAlerts({ now: new Date("2026-12-01T13:00:00Z"), startedAt: Date.now() });
+    vi.useRealTimers();
+    expect(second.wanted).toBe(0);
   });
 });

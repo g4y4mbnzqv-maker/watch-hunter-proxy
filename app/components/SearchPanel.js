@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import BrandPicker from "./BrandPicker";
+import { GEM_MAX_PRICE } from "@/lib/gems";
 import ConditionFilter from "./ConditionFilter";
 import ListingTypeFilter from "./ListingTypeFilter";
 
@@ -15,6 +16,7 @@ export default function SearchPanel({
   topProgress,
   onScan,
   onTopDeals,
+  onHiddenGems,
   topBrands,
   onTopBrandsChange,
   includeJunk,
@@ -83,6 +85,17 @@ export default function SearchPanel({
           onTopBrandsChange={onTopBrandsChange}
           onTopDeals={onTopDeals}
         />
+      </div>
+
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={onHiddenGems}
+          disabled={busy}
+          className="text-xs font-medium text-amber-300 hover:text-amber-200 disabled:opacity-50"
+        >
+          ✦ Hidden gems: cheap watches with vague titles, under £{GEM_MAX_PRICE}
+        </button>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 pt-4">

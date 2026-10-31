@@ -75,14 +75,17 @@ export async function runPool(items, limit, fn) {
 
 // Shows a notification through the service worker where there is one, as
 // Android requires, or straight from the page otherwise
-export async function notify(item, now) {
-  const title = `Ends in ${formatTimeLeft(item.endTime, now)}: ${item.title}`;
+// With final, it's the last call: the auction is about to end
+export async function notify(item, now, { final = false } = {}) {
+  const left = formatTimeLeft(item.endTime, now);
+  const title = final ? `Bid now, ${left} left: ${item.title}` : `Ends in ${left}: ${item.title}`;
   const options = {
     body:
       item.maxBid !== null
         ? `Now ${formatGbp(item.totalCost)}. Bid up to ${formatGbp(item.maxBid)}.`
         : `Now ${formatGbp(item.totalCost)}.`,
-    tag: item.itemId,
+    // A separate tag, so the last call shows even after the first alert
+    tag: final ? `${item.itemId}-final` : item.itemId,
     icon: "/icons/icon-192.png",
     data: { url: item.url },
   };

@@ -6,7 +6,10 @@ import { formatGbp } from "./format";
 import { stockReminders } from "@/lib/stock";
 import { weeklyReview } from "@/lib/review";
 import { draftDescription, draftPrices, draftTitle } from "@/lib/listingDraft";
-import { MIN_SALES_FOR_RATIO, PLATFORMS, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
+import { fetchPrices, titleModelKey } from "../client/priceCheck";
+import { resalePercentFor } from "@/lib/profit";
+import { REPORTING_AMOUNT, REPORTING_SALES, TRADING_ALLOWANCE, inTaxYear, platformReporting, salesTaxYears, taxYearSummary } from "@/lib/tax";
+import { MIN_SALES_FOR_RATIO, PLATFORMS, pastSales, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
 
 // Watches you bought and sold: running profit, and what your real sale
 // prices say about the "Expected sale price" setting
@@ -57,6 +60,8 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
 
       <ReviewPanel review={review} />
 
+      <TaxPanel deals={deals} settings={settings} />
+
       {reminders.length > 0 && (
         <Reminders
           reminders={reminders}
@@ -64,6 +69,8 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
           onDrop={(id, price) => updateDeal(id, { listedAt: price, listedOn: today() })}
         />
       )}
+
+      <StockValue deals={deals} settings={settings} />
 
       <RatioPanel ratio={ratio} settings={settings} onSettingsChange={onSettingsChange} />
 
@@ -94,6 +101,7 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
           <DealRow
             key={deal.id}
             deal={deal}
+            deals={deals}
             settings={settings}
             open={open === deal.id}
             onToggle={() => setOpen((current) => (current === deal.id ? null : deal.id))}
@@ -254,6 +262,225 @@ function Period({ label, period }) {
   );
 }
 
+// Shots that sell a watch: buyers want to see all of these
+const PHOTO_SHOTS = [
+  ["dial", "Dial, straight on"],
+  ["angle", "Dial at an angle (crystal and lume)"],
+  ["caseback", "Caseback"],
+  ["crown", "Side with the crown"],
+  ["otherSide", "Other side"],
+  ["clasp", "Clasp or buckle"],
+  ["bracelet", "Bracelet or strap, full length"],
+  ["reference", "Reference or serial"],
+  ["movement", "Movement, if the back is clear"],
+  ["wrist", "On the wrist, for size"],
+  ["extras", "Box, papers and spare links"],
+  ["marks", "Any marks, close up"],
+];
+
+function PhotoChecklist({ photos, onChange }) {
+  const [open, setOpen] = useState(false);
+  const done = PHOTO_SHOTS.filter(([key]) => photos[key]).length;
+  return (
+    <div className="sm:col-span-2">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/15 hover:bg-white/5"
+      >
+        Photo checklist <span className="ml-1 tabular-nums text-zinc-400">{done}/{PHOTO_SHOTS.length}</span>
+      </button>
+      {open && (
+        <div className="mt-2 rounded-xl bg-black/20 p-3 ring-1 ring-white/5">
+          <p className="mb-2 text-[11px] text-zinc-500">
+            Natural daylight, a plain background, and no flash on the crystal. Clear photos of every side sell faster and
+            for more.
+          </p>
+          <ul className="grid gap-1.5 sm:grid-cols-2">
+            {PHOTO_SHOTS.map(([key, label]) => (
+              <li key={key}>
+                <label className="flex items-center gap-2 text-xs text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(photos[key])}
+                    onChange={(e) => onChange({ ...photos, [key]: e.target.checked })}
+                    className="accent-emerald-500"
+                  />
+                  {label}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Takings against the trading allowance, sales per site against the
+// reporting thresholds, and a CSV per tax year
+function TaxPanel({ deals, settings }) {
+  const summary = useMemo(() => taxYearSummary(deals, settings), [deals, settings]);
+  const sites = useMemo(() => platformReporting(deals), [deals]);
+  const years = useMemo(() => salesTaxYears(deals), [deals]);
+  const [chosen, setChosen] = useState(null);
+  if (!years.length && !summary.sales) return null;
+
+  const share = Math.min(summary.takings / TRADING_ALLOWANCE, 1) * 100;
+  const year = years.find((entry) => entry.label === chosen) ?? years[0];
+
+  function download() {
+    if (!year) return;
+    const blob = new Blob([toCsv(deals.filter((deal) => inTaxYear(deal, year)), settings)], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `watch-hunter-sales-${year.label.replace("/", "-")}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  const siteName = (key) => PLATFORMS.find((platform) => platform.key === key)?.label ?? "Elsewhere";
+
+  return (
+    <section className="mb-6 rounded-2xl bg-zinc-900/60 p-4 text-xs text-zinc-400 ring-1 ring-white/5">
+      <h2 className="mb-2 text-sm font-medium text-zinc-100">Tax year {summary.year.label}</h2>
+      <p>
+        {summary.sales} {summary.sales === 1 ? "sale" : "sales"}, takings{" "}
+        <span className="tabular-nums text-zinc-200">{formatGbp(summary.takings)}</span>, profit{" "}
+        <span className={`tabular-nums ${summary.profit >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{formatGbp(summary.profit)}</span>.
+      </p>
+      <div className="mt-2">
+        <div className="mb-1 flex justify-between">
+          <span>Trading allowance</span>
+          <span className="tabular-nums">
+            {formatGbp(summary.takings)} of {formatGbp(TRADING_ALLOWANCE)}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+          <div className={`h-full rounded-full ${summary.overAllowance ? "bg-amber-400" : "bg-emerald-400"}`} style={{ width: `${share}%` }} />
+        </div>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          {summary.overAllowance
+            ? "Your takings are over £1,000 this tax year, so you'll likely need to register for Self Assessment and report the profit."
+            : "Takings (what buyers paid, before costs) up to £1,000 in a tax year don't need reporting to HMRC."}
+        </p>
+      </div>
+      {sites.length > 0 && (
+        <ul className="mt-2 space-y-0.5">
+          {sites.map((site) => (
+            <li key={site.platform}>
+              {siteName(site.platform)} this calendar year: {site.sales} {site.sales === 1 ? "sale" : "sales"},{" "}
+              {formatGbp(site.takings)}
+              {site.reported
+                ? ". The site will report this to HMRC."
+                : ` (reports at ${REPORTING_SALES} sales or about ${formatGbp(REPORTING_AMOUNT)}).`}
+            </li>
+          ))}
+        </ul>
+      )}
+      {years.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={year?.label}
+            onChange={(e) => setChosen(e.target.value)}
+            aria-label="Tax year"
+            className="rounded-full bg-black/30 px-3 py-1 text-xs text-zinc-200 ring-1 ring-white/10"
+          >
+            {years.map((entry) => (
+              <option key={entry.label} value={entry.label}>
+                {entry.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={download} className="rounded-full px-3 py-1 font-medium text-zinc-200 ring-1 ring-white/15 hover:bg-white/5">
+            Download sales for this tax year
+          </button>
+        </div>
+      )}
+      <p className="mt-2 text-[11px] text-zinc-500">A guide, not tax advice. Check with HMRC or an accountant.</p>
+    </section>
+  );
+}
+
+// What unsold watches are worth at today's asking prices, after your
+// expected sale price, against what you paid
+function StockValue({ deals, settings }) {
+  const unsold = useMemo(() => deals.filter((deal) => !isSold(deal)).slice(0, 20), [deals]);
+  const [state, setState] = useState(null);
+  if (!unsold.length) return null;
+
+  async function value() {
+    setState({ loading: true });
+    try {
+      const prices = await fetchPrices(unsold.map((deal) => deal.title || ""));
+      const rows = unsold.map((deal, index) => {
+        const stats = prices[index];
+        const share = resalePercentFor({ title: deal.title, brand: deal.brand }, settings).percent;
+        return { deal, worth: stats ? Math.round((stats.median * share) / 100) : null };
+      });
+      setState({ rows });
+    } catch (err) {
+      setState({ error: err.message });
+    }
+  }
+
+  const priced = state?.rows?.filter((row) => row.worth !== null) ?? [];
+  const worth = priced.reduce((total, row) => total + row.worth, 0);
+  const paid = priced.reduce((total, row) => total + Number(row.deal.boughtFor || 0), 0);
+
+  return (
+    <section className="mb-6 rounded-2xl bg-zinc-900/60 p-4 text-xs text-zinc-400 ring-1 ring-white/5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-medium text-zinc-100">Stock value</h2>
+        <button
+          type="button"
+          onClick={value}
+          disabled={state?.loading}
+          className="rounded-full px-3 py-1 font-medium text-emerald-300 ring-1 ring-emerald-400/40 hover:bg-emerald-400/10 disabled:opacity-50"
+        >
+          {state?.loading ? "Checking…" : state?.rows ? "Check again" : `Value ${unsold.length} unsold`}
+        </button>
+      </div>
+      {!state && <p className="mt-1">What your unsold watches would fetch at today's eBay asking prices.</p>}
+      {state?.error && <p className="mt-1 text-rose-300">{state.error}</p>}
+      {state?.rows && (
+        <>
+          <p className="mt-2 text-zinc-300">
+            {priced.length ? (
+              <>
+                Worth about <strong className="tabular-nums text-zinc-50">{formatGbp(worth)}</strong> against{" "}
+                {formatGbp(paid)} paid:{" "}
+                <span className={worth - paid >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                  {worth - paid >= 0 ? "+" : ""}
+                  {formatGbp(worth - paid)}
+                </span>{" "}
+                before fees.
+              </>
+            ) : (
+              "None of these could be priced from current listings."
+            )}
+            {priced.length < state.rows.length && ` ${state.rows.length - priced.length} couldn't be priced.`}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {state.rows.map(({ deal, worth: each }) => (
+              <li key={deal.id} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">{deal.title || "Untitled watch"}</span>
+                <span className="shrink-0 tabular-nums">
+                  {each === null ? "no price" : `${formatGbp(each)} (paid ${formatGbp(Number(deal.boughtFor) || 0)})`}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[11px] text-zinc-500">
+            Uses your expected sale price ({settings.resalePercent}%, or your brand figures) on the median asking price.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 // Watches that need listing, or a price cut
 function Reminders({ reminders, onOpen, onDrop }) {
   return (
@@ -301,10 +528,23 @@ function Reminders({ reminders, onOpen, onDrop }) {
 }
 
 // A first draft of the listing for eBay or Vinted, to copy
-function ListingDraft({ deal, settings }) {
+function ListingDraft({ deal, deals, settings }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState("ebay");
   const [copied, setCopied] = useState(null);
+  // Today's asking prices for this model, once checked
+  const [today, setToday] = useState(null);
+  const sales = useMemo(() => pastSales(deals, deal.title, titleModelKey).filter((sale) => sale.id !== deal.id), [deals, deal]);
+
+  async function checkToday() {
+    setToday({ loading: true });
+    try {
+      const [stats] = await fetchPrices([deal.title]);
+      setToday(stats ? { stats } : { none: true });
+    } catch (err) {
+      setToday({ error: err.message });
+    }
+  }
 
   if (!open) {
     return (
@@ -322,7 +562,8 @@ function ListingDraft({ deal, settings }) {
 
   const title = draftTitle(deal);
   const text = draftDescription(deal, { platform });
-  const prices = draftPrices(deal, settings);
+  // Today's median, once checked, is a better guide than the one from when you bought
+  const prices = draftPrices(today?.stats ? { ...deal, askingMedian: today.stats.median } : deal, settings);
 
   async function copy(label, value) {
     try {
@@ -355,6 +596,37 @@ function ListingDraft({ deal, settings }) {
         <button type="button" onClick={() => setOpen(false)} aria-label="Close draft" className="text-sky-200/70 hover:text-sky-100">
           ✕
         </button>
+      </div>
+
+      <div className="mb-3 rounded-lg bg-black/30 p-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sky-200/80">Today's asking prices</span>
+          {!today?.loading && (
+            <button type="button" onClick={checkToday} className="rounded-lg px-2 py-0.5 ring-1 ring-sky-300/40 hover:bg-sky-300/10">
+              {today ? "Check again" : "Check now"}
+            </button>
+          )}
+        </div>
+        {today?.loading && <p className="mt-1 text-sky-200/70">Checking eBay…</p>}
+        {today?.stats && (
+          <p className="mt-1 text-sky-50">
+            {formatGbp(today.stats.low)} to {formatGbp(today.stats.high)}, median{" "}
+            <strong className="tabular-nums">{formatGbp(today.stats.median)}</strong>, across {today.stats.count} pre-owned listings
+            {today.stats.matchedBy === "name" ? " matched by model name" : ""}. Prices below use this.
+          </p>
+        )}
+        {today?.none && <p className="mt-1 text-sky-200/70">Too few listings of this model to price it. Try the Sold link on eBay.</p>}
+        {today?.error && <p className="mt-1 text-rose-300">{today.error}</p>}
+        {sales.length > 0 && (
+          <p className="mt-1.5 text-sky-200/80">
+            You've sold this model before:{" "}
+            {sales
+              .slice(0, 3)
+              .map((sale) => `${formatGbp(Number(sale.soldFor))}${sale.soldOn ? ` (${sale.soldOn})` : ""}`)
+              .join(", ")}
+            .
+          </p>
+        )}
       </div>
 
       {prices && (
@@ -396,7 +668,7 @@ function sameBrandFigures(byBrand, current = {}) {
   return byBrand.length === Object.keys(current).length && byBrand.every((row) => current[row.brand] === row.percent);
 }
 
-function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
+function DealRow({ deal, deals, settings, open, onToggle, onChange, onRemove }) {
   const sold = isSold(deal);
   const profit = dealProfit(deal, settings);
   const days = daysToSell(deal);
@@ -454,7 +726,8 @@ function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
                 onChange={(listedAt) => onChange({ listedAt })}
                 hint="So the app can remind you if it hasn't sold in three weeks."
               />
-              <ListingDraft deal={deal} settings={settings} />
+              <PhotoChecklist photos={deal.photos ?? {}} onChange={(photos) => onChange({ photos })} />
+              <ListingDraft deal={deal} deals={deals} settings={settings} />
             </>
           )}
 

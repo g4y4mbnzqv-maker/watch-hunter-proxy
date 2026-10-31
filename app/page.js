@@ -21,6 +21,8 @@ import { useWatchlist } from "./client/useWatchlist";
 import { useDeals } from "./client/useDeals";
 import { useTrends } from "./client/useTrends";
 import { trendFor } from "@/lib/indexKey";
+import { GEM_QUERIES } from "@/lib/gems";
+import { HIDDEN_GEMS } from "./client/useScanner";
 import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
@@ -59,6 +61,8 @@ export default function Home() {
   // Auctions, Buy It Now or both; both by default
   const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES, { sync: true });
   // Brands Top deals scans, popular ones to start with
+  // Models you're after and the most you'd pay
+  const [wanted, setWanted] = useStoredState("wh-wanted", [], { sync: true });
   const [storedTopBrands, setTopBrands] = useStoredState("wh-top-brands", POPULAR, { sync: true });
   const topBrands = useMemo(() => cleanTopBrands(storedTopBrands), [storedTopBrands]);
 
@@ -130,11 +134,16 @@ export default function Home() {
     listingTypes,
     includeJunk,
     onLimitHit: usage.markLimitHit,
-    onScanned: ({ topDeals }) => {
+    onScanned: ({ topDeals, gems }) => {
       setScanId((id) => id + 1);
       if (topDeals) {
         setView("deals");
         setSort("profit");
+      }
+      // Gems have no resale estimate, so none would show under Deals
+      if (gems) {
+        setView("all");
+        setSort("ending");
       }
       usage.refreshUsage();
       // The scan just added today's prices to the index
@@ -222,6 +231,8 @@ export default function Home() {
           onSetResale={setResale}
           onFindDeals={() => setMode("scan")}
           onLogPurchase={onLogPurchase}
+          wanted={wanted}
+          onWantedChange={setWanted}
         />
       )}
 
@@ -249,6 +260,7 @@ export default function Home() {
             topProgress={scanner.topProgress}
             onScan={scanner.scan}
             onTopDeals={() => scanner.scanTopDeals(topBrands)}
+            onHiddenGems={() => scanner.scanTopDeals(GEM_QUERIES, { gems: true })}
             topBrands={topBrands}
             onTopBrandsChange={setTopBrands}
             includeJunk={includeJunk}
@@ -265,6 +277,14 @@ export default function Home() {
 
           {scanner.error && <Notice tone="rose">{scanner.error}</Notice>}
 
+          {scanner.scannedBrand === HIDDEN_GEMS && !scanner.loading && (
+            <p className="mb-4 rounded-2xl bg-amber-400/10 p-3 text-xs leading-relaxed text-amber-100 ring-1 ring-amber-400/20">
+              Hidden gems have no brand in the title, so there's no resale estimate. Open the photos and look for a name
+              on the dial, caseback or crown. If you spot one, search that brand and model to price it, and use the fake
+              checks before bidding.
+            </p>
+          )}
+
           {scanner.restoredAt && !scanner.loading && (
             <p className="mb-4 text-xs text-zinc-400">
               Showing your last scan from {timeAgo(scanner.restoredAt, now)}. Bids and listings may have changed, so
@@ -274,8 +294,10 @@ export default function Home() {
 
           {scanner.loading && scanner.topProgress && (
             <p className="mb-4 text-sm text-zinc-400">
-              Checking {topBrands.length} {topBrands.length === 1 ? "brand" : "brands"} for the best deals. This takes a little
-              longer than a single brand.
+              {scanner.topProgress.gems
+                ? `Running ${scanner.topProgress.total} searches for watches with vague titles.`
+                : `Checking ${topBrands.length} ${topBrands.length === 1 ? "brand" : "brands"} for the best deals.`}{" "}
+              This takes a little longer than a single brand.
             </p>
           )}
 

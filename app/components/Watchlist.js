@@ -1,22 +1,28 @@
 "use client";
 
 import CardGrid from "./CardGrid";
+import WantedList from "./WantedList";
 import { EmptyState, Notice } from "./Placeholders";
 
-export default function Watchlist({ watch, items = watch.items, now, paused, onSetResale, onFindDeals, onLogPurchase }) {
+export default function Watchlist({ watch, items = watch.items, now, paused, onSetResale, onFindDeals, onLogPurchase, wanted, onWantedChange }) {
+  const wantedList = <WantedList wanted={wanted} onChange={onWantedChange} now={now} paused={paused} />;
   if (!items.length) {
     return (
-      <EmptyState
-        title="Your watchlist is empty."
-        body="Tap the bookmark on any listing to save it here."
-        action="Find deals"
-        onAction={onFindDeals}
-      />
+      <>
+        {wantedList}
+        <EmptyState
+          title="Your watchlist is empty."
+          body="Tap the bookmark on any listing to save it here."
+          action="Find deals"
+          onAction={onFindDeals}
+        />
+      </>
     );
   }
 
   return (
     <section>
+      {wantedList}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-zinc-400">
           {watch.refreshing
