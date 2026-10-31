@@ -265,6 +265,13 @@ export default function Home() {
 
           {scanner.error && <Notice tone="rose">{scanner.error}</Notice>}
 
+          {scanner.restoredAt && !scanner.loading && (
+            <p className="mb-4 text-xs text-zinc-400">
+              Showing your last scan from {timeAgo(scanner.restoredAt, now)}. Bids and listings may have changed, so
+              scan again for the latest.
+            </p>
+          )}
+
           {scanner.loading && scanner.topProgress && (
             <p className="mb-4 text-sm text-zinc-400">
               Checking {topBrands.length} {topBrands.length === 1 ? "brand" : "brands"} for the best deals. This takes a little
@@ -324,4 +331,13 @@ function withTrends(items, trends) {
     const trend = trendFor(item, trends);
     return trend ? { ...item, trend } : item;
   });
+}
+
+// "5 minutes ago", "3 hours ago"
+function timeAgo(then, now) {
+  const minutes = Math.max(Math.round((now - then) / 60_000), 0);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
 }

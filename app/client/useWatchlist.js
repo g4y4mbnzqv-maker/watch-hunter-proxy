@@ -35,7 +35,17 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
   );
 
   async function refresh() {
-    const ids = Object.keys(watchlist).filter((id) => !watchlist[id].ended);
+    // An auction that finished hours ago has nothing new to say, so it's
+    // marked ended here instead of costing an eBay call every refresh
+    const finished = Object.keys(watchlist).filter((id) => !watchlist[id].ended && longFinished(watchlist[id]));
+    if (finished.length) {
+      setWatchlist((current) => {
+        const next = { ...current };
+        for (const id of finished) if (next[id]) next[id] = { ...next[id], ended: true };
+        return next;
+      });
+    }
+    const ids = Object.keys(watchlist).filter((id) => !watchlist[id].ended && !finished.includes(id));
     if (!ids.length) return;
 
     setRefreshing(true);
@@ -162,4 +172,12 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
     enableAlerts,
     disableAlerts: () => setAlertsOn(false),
   };
+}
+
+// Auctions are checked once more after they end, for the final bid; after
+// this long there's no point asking eBay again
+const FINISHED_AFTER_MS = 6 * 60 * 60_000;
+
+export function longFinished(item, now = Date.now()) {
+  return item.listingType !== "BUY_IT_NOW" && Boolean(item.endTime) && Date.parse(item.endTime) < now - FINISHED_AFTER_MS;
 }

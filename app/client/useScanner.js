@@ -1,12 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { runPool } from "./listings";
 
 // Label used in place of a brand once a Top deals scan has run
 export const TOP_DEALS = "Top deals";
 // Brands scanned at once by Top deals, to stay gentle on the eBay API
 const TOP_DEALS_CONCURRENCY = 3;
+// The last scan is shown again on reopening the app for this long
+const LAST_SCAN_MS = 12 * 60 * 60_000;
+const LAST_SCAN_KEY = "wh-last-scan";
+
+// Keeps the last scan in this browser, so reopening the app shows it at
+// once. Skipped quietly if it doesn't fit or storage is blocked.
+function rememberScan(scan) {
+  try {
+    window.localStorage.setItem(LAST_SCAN_KEY, JSON.stringify({ ...scan, savedAt: Date.now() }));
+  } catch {
+    // Too big for storage, or storage blocked: the app works without it
+  }
+}
+
+function recallScan() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(LAST_SCAN_KEY));
+    return saved && Date.now() - saved.savedAt < LAST_SCAN_MS ? saved : null;
+  } catch {
+    return null;
+  }
+}
 
 // Brand scans and Top deals: the listings found and the state around them
 export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned }) {
@@ -18,6 +40,18 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
   const [error, setError] = useState(null);
   const [topProgress, setTopProgress] = useState(null);
   const [topFailures, setTopFailures] = useState([]);
+  // When the results on screen came from a scan before this visit
+  const [restoredAt, setRestoredAt] = useState(null);
+
+  useEffect(() => {
+    const saved = recallScan();
+    if (!saved) return;
+    setResults(saved.results);
+    setScannedBrand(saved.scannedBrand);
+    setScanStats(saved.scanStats ?? null);
+    setTopFailures(saved.topFailures ?? []);
+    setRestoredAt(saved.savedAt);
+  }, []);
 
   async function fetchBrand(query) {
     const params = new URLSearchParams({ brand: query, types: listingTypes.join(",") });
@@ -47,6 +81,8 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
       setResults(data.results);
       setScanStats(data.stats ?? null);
       setScannedBrand(query);
+      setRestoredAt(null);
+      rememberScan({ results: data.results, scannedBrand: query, scanStats: data.stats ?? null });
       onScanned({ topDeals: false });
     } catch (err) {
       console.error(err);
@@ -98,10 +134,14 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
           if (!combined.has(item.itemId)) combined.set(item.itemId, { ...item, brand: name });
         }
       }
-      setResults([...combined.values()]);
+      const combinedResults = [...combined.values()];
+      const failed = brands.filter((name) => failures.some((failure) => failure.name === name));
+      setResults(combinedResults);
       setScannedBrand(TOP_DEALS);
       setScanStats(null);
-      setTopFailures(brands.filter((name) => failures.some((failure) => failure.name === name)));
+      setTopFailures(failed);
+      setRestoredAt(null);
+      rememberScan({ results: combinedResults, scannedBrand: TOP_DEALS, scanStats: null, topFailures: failed });
       onScanned({ topDeals: true });
     }
 
@@ -117,6 +157,7 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
     error,
     topProgress,
     topFailures,
+    restoredAt,
     scan,
     scanTopDeals,
   };

@@ -1,4 +1,10 @@
+import { Roboto, Roboto_Mono } from "next/font/google";
 import "./globals.css";
+
+// Served with the app instead of from Google on every visit, so the first
+// screen doesn't wait on another site
+const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-roboto", display: "swap" });
+const robotoMono = Roboto_Mono({ subsets: ["latin"], weight: ["500"], variable: "--font-roboto-mono", display: "swap" });
 
 export const metadata = {
   title: "Watch Hunter",
@@ -24,15 +30,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en-GB">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@500&display=swap"
-        />
-      </head>
+    <html lang="en-GB" className={`${roboto.variable} ${robotoMono.variable}`}>
       <body className="min-h-screen bg-zinc-950 font-sans text-white antialiased">
         {children}
       </body>
