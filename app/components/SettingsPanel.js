@@ -1,6 +1,7 @@
 "use client";
 
 import { DEFAULT_SETTINGS } from "@/lib/profit";
+import { useSyncStatus } from "../client/sync";
 
 const FIELDS = [
   {
@@ -26,6 +27,12 @@ const FIELDS = [
     label: "Selling fees",
     suffix: "%",
     help: "Your eBay final value fee. Check what your account pays.",
+  },
+  {
+    key: "vintedFeePercent",
+    label: "Vinted seller fee",
+    suffix: "%",
+    help: "For the Vinted profit on each card. UK sellers currently pay no fee, and the buyer pays postage.",
   },
   {
     key: "postageOut",
@@ -75,7 +82,31 @@ export default function SettingsPanel({ settings, onChange }) {
         Seller checks
       </h3>
       <FieldGrid fields={SELLER_FIELDS} settings={settings} onChange={onChange} />
+
+      <SyncLine />
     </section>
+  );
+}
+
+const SYNC_TEXT = {
+  checking: { dot: "bg-zinc-500", text: "Checking whether your data syncs…" },
+  on: { dot: "bg-emerald-400", text: "Your watchlist, settings and sales log sync across your devices." },
+  "no-passcode": {
+    dot: "bg-amber-400",
+    text: "Saved in this browser only. Set APP_PASSCODE in Vercel to sync across devices, so nobody else can see your data.",
+  },
+  "no-database": { dot: "bg-amber-400", text: "Saved in this browser only. Connect a database in Vercel to sync across devices." },
+  offline: { dot: "bg-amber-400", text: "Couldn't reach the server, so changes are saved in this browser for now." },
+};
+
+function SyncLine() {
+  const status = useSyncStatus();
+  const { dot, text } = SYNC_TEXT[status] ?? SYNC_TEXT.checking;
+  return (
+    <p className="mt-6 flex items-start gap-2 border-t border-white/5 pt-4 text-xs text-zinc-400">
+      <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+      {text}
+    </p>
   );
 }
 

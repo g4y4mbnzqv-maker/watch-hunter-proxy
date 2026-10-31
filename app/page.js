@@ -19,6 +19,8 @@ import { useScanner } from "./client/useScanner";
 import { useUsage } from "./client/useUsage";
 import { useWatchlist } from "./client/useWatchlist";
 import { useDeals } from "./client/useDeals";
+import { useTrends } from "./client/useTrends";
+import { trendFor } from "@/lib/indexKey";
 import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
@@ -42,25 +44,26 @@ export default function Home() {
   // Counts scans, so the card grid starts from its first page on each one
   const [scanId, setScanId] = useState(0);
 
-  const [storedSettings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS);
+  const [storedSettings, setSettings] = useStoredState("wh-settings", DEFAULT_SETTINGS, { sync: true });
   const settings = useMemo(() => ({ ...DEFAULT_SETTINGS, ...storedSettings }), [storedSettings]);
   // Resale values typed for one listing, by item ID
-  const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {});
+  const [overrides, setOverrides] = useStoredState("wh-resale-overrides", {}, { sync: true });
   // Resale values typed for a model, by base reference or model name
-  const [modelValues, setModelValues] = useStoredState("wh-model-values", {});
+  const [modelValues, setModelValues] = useStoredState("wh-model-values", {}, { sync: true });
   const [includeJunk, setIncludeJunk] = useState(false);
-  const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true);
+  const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true, { sync: true });
   // Only listings eBay authenticates itself
-  const [guaranteedOnly, setGuaranteedOnly] = useStoredState("wh-guaranteed-only", false);
+  const [guaranteedOnly, setGuaranteedOnly] = useStoredState("wh-guaranteed-only", false, { sync: true });
   // Condition grades to show; every grade by default
-  const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES);
+  const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES, { sync: true });
   // Auctions, Buy It Now or both; both by default
-  const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES);
+  const [listingTypes, setListingTypes] = useStoredState("wh-types", ALL_LISTING_TYPES, { sync: true });
   // Brands Top deals scans, popular ones to start with
-  const [storedTopBrands, setTopBrands] = useStoredState("wh-top-brands", POPULAR);
+  const [storedTopBrands, setTopBrands] = useStoredState("wh-top-brands", POPULAR, { sync: true });
   const topBrands = useMemo(() => cleanTopBrands(storedTopBrands), [storedTopBrands]);
 
   const usage = useUsage(now);
+  const { trends, refreshTrends } = useTrends();
   const dealBook = useDeals();
   // The deal to open when the sales log is shown, after "I bought this"
   const [openDealId, setOpenDealId] = useState(null);
@@ -134,6 +137,8 @@ export default function Home() {
         setSort("profit");
       }
       usage.refreshUsage();
+      // The scan just added today's prices to the index
+      refreshTrends();
     },
   });
 
@@ -156,8 +161,8 @@ export default function Home() {
   // Profit and checks don't depend on the time, so the 30-second tick only
   // re-filters for listings that have ended
   const analysed = useMemo(
-    () => analyseAll(scanner.results, settings, resaleOverride),
-    [scanner.results, settings, resaleOverride]
+    () => withTrends(analyseAll(scanner.results, settings, resaleOverride), trends),
+    [scanner.results, settings, resaleOverride, trends]
   );
   const live = useMemo(() => analysed.filter((item) => isLive(item, now)), [analysed, now]);
 
@@ -179,6 +184,7 @@ export default function Home() {
   }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly]);
 
   const { watchlist } = watch;
+  const watchItems = useMemo(() => withTrends(watch.items, trends), [watch.items, trends]);
   const isSaved = useCallback((itemId) => Boolean(watchlist[itemId]), [watchlist]);
 
   const hasResults = !(scanner.results.length === 0 && scanner.scanStats);
@@ -210,6 +216,7 @@ export default function Home() {
       {mode === "watchlist" && (
         <Watchlist
           watch={watch}
+          items={watchItems}
           now={now}
           paused={usage.limitPaused}
           onSetResale={setResale}
@@ -307,4 +314,13 @@ export default function Home() {
       )}
     </main>
   );
+}
+
+// Adds each listing's 30-day model price change from the price index
+function withTrends(items, trends) {
+  if (!Object.keys(trends).length) return items;
+  return items.map((item) => {
+    const trend = trendFor(item, trends);
+    return trend ? { ...item, trend } : item;
+  });
 }

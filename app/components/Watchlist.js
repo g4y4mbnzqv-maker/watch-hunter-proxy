@@ -3,8 +3,8 @@
 import CardGrid from "./CardGrid";
 import { EmptyState, Notice } from "./Placeholders";
 
-export default function Watchlist({ watch, now, paused, onSetResale, onFindDeals, onLogPurchase }) {
-  if (!watch.items.length) {
+export default function Watchlist({ watch, items = watch.items, now, paused, onSetResale, onFindDeals, onLogPurchase }) {
+  if (!items.length) {
     return (
       <EmptyState
         title="Your watchlist is empty."
@@ -67,7 +67,7 @@ export default function Watchlist({ watch, now, paused, onSetResale, onFindDeals
       )}
 
       <CardGrid
-        items={watch.items}
+        items={items}
         now={now}
         isSaved={() => true}
         onToggleSave={watch.toggleSave}

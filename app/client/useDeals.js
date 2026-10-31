@@ -17,7 +17,7 @@ function guessBrand(item) {
 
 // Your bought and sold watches, kept in this browser
 export function useDeals() {
-  const [deals, setDeals] = useStoredState("wh-deals", []);
+  const [deals, setDeals] = useStoredState("wh-deals", [], { sync: true });
 
   // From a listing you won or bought; returns the new deal's id
   const logPurchase = useCallback(

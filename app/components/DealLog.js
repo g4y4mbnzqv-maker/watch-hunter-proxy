@@ -120,22 +120,58 @@ function RatioPanel({ ratio, settings, onSettingsChange }) {
         Across {ratio.count} sales, your watches sold for <strong className="tabular-nums">{ratio.percent}%</strong> of the
         median asking price when you bought them. Settings assume {current}%.
       </p>
-      {ratio.byBrand.length > 1 && (
+      {ratio.byBrand.length > 0 && (
         <p className="mt-1 text-xs text-sky-200/80">
           {ratio.byBrand.map((row) => `${row.brand} ${row.percent}% (${row.count})`).join(" · ")}
         </p>
       )}
-      {off !== 0 && (
-        <button
-          type="button"
-          onClick={() => onSettingsChange({ ...settings, resalePercent: ratio.percent })}
-          className="mt-3 rounded-full bg-sky-300 px-3.5 py-1.5 text-sm font-semibold text-sky-950 hover:bg-sky-200"
-        >
-          Use {ratio.percent}% for estimates
-        </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {off !== 0 && (
+          <button
+            type="button"
+            onClick={() => onSettingsChange({ ...settings, resalePercent: ratio.percent })}
+            className="rounded-full bg-sky-300 px-3.5 py-1.5 text-sm font-semibold text-sky-950 hover:bg-sky-200"
+          >
+            Use {ratio.percent}% for estimates
+          </button>
+        )}
+        {ratio.byBrand.length > 0 && !sameBrandFigures(ratio.byBrand, settings.brandResalePercent) && (
+          <button
+            type="button"
+            onClick={() =>
+              onSettingsChange({
+                ...settings,
+                brandResalePercent: Object.fromEntries(ratio.byBrand.map((row) => [row.brand, row.percent])),
+              })
+            }
+            className="rounded-full px-3.5 py-1.5 text-sm font-semibold text-sky-100 ring-1 ring-sky-300/50 hover:bg-sky-300/10"
+          >
+            Use my figure for {ratio.byBrand.map((row) => row.brand).join(", ")}
+          </button>
+        )}
+      </div>
+      {Object.keys(settings.brandResalePercent ?? {}).length > 0 && (
+        <p className="mt-2 text-xs text-sky-200/80">
+          Estimates now use{" "}
+          {Object.entries(settings.brandResalePercent)
+            .map(([brand, percent]) => `${percent}% for ${brand}`)
+            .join(", ")}
+          , and {current}% for other brands.{" "}
+          <button
+            type="button"
+            onClick={() => onSettingsChange({ ...settings, brandResalePercent: {} })}
+            className="underline hover:text-sky-100"
+          >
+            Stop using brand figures
+          </button>
+        </p>
       )}
     </div>
   );
+}
+
+function sameBrandFigures(byBrand, current = {}) {
+  return byBrand.length === Object.keys(current).length && byBrand.every((row) => current[row.brand] === row.percent);
 }
 
 function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {

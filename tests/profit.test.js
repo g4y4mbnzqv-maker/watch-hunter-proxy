@@ -93,3 +93,27 @@ describe("rough estimates", () => {
     expect(roughEstimateReasons({ title: "Seiko SKX007", comps: { count: 9, low: 200, high: 300 } })).toEqual([]);
   });
 });
+
+describe("brand figures from your own sales", () => {
+  const seiko = { title: "Seiko SKX007", currentBid: 80, postage: 6, comps: { median: 200, count: 8 } };
+  const settings = { ...DEFAULT_SETTINGS, brandResalePercent: { Seiko: 70 } };
+
+  it("uses your brand's figure where you have one", () => {
+    const result = analyse(seiko, settings);
+    expect(result.resale).toBe(140);
+    expect(result.brandPercent).toEqual({ percent: 70, brand: "Seiko" });
+  });
+
+  it("uses the general figure for other brands and for your own values", () => {
+    expect(analyse({ ...seiko, title: "Citizen NY0040" }, settings).resale).toBe(170);
+    expect(analyse(seiko, settings, { value: 300, source: "listing" }).brandPercent).toBeNull();
+  });
+});
+
+describe("Vinted profit", () => {
+  it("leaves out eBay's fee and postage to the buyer", () => {
+    // £170 resale, no fee, no postage out, less £86 cost
+    expect(analyse(item, DEFAULT_SETTINGS).vintedProfit).toBe(84);
+    expect(analyse(item, { ...DEFAULT_SETTINGS, vintedFeePercent: 5 }).vintedProfit).toBe(75.5);
+  });
+});

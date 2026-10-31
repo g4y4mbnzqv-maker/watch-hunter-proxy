@@ -186,7 +186,11 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
           />
         </dl>
 
-        {item.comps && <PriceRange comps={item.comps} />}
+        {!ended && item.vintedProfit !== undefined && item.profit !== null && item.status !== "check" && (
+          <VintedLine item={item} />
+        )}
+        {item.comps && <PriceRange comps={item.comps} brandPercent={item.brandPercent} />}
+        {item.trend && <TrendLine trend={item.trend} />}
 
         <SellerLine seller={item.seller} check={item.sellerCheck} />
         {!ended && <FakeChecks item={item} />}
@@ -205,6 +209,9 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
             {/* A limit from a shaky estimate could cost real money */}
             {item.maxBid !== null && !item.roughReasons?.length && !item.tooCheap && (
               isBuyItNow ? <OfferLimit item={item} /> : <BidHeadroom item={item} />
+            )}
+            {!isBuyItNow && item.maxBid > item.currentBid && !item.roughReasons?.length && !item.tooCheap && (
+              <SnipePanel item={item} />
             )}
             <ResaleEditor item={item} onSetResale={onSetResale} />
           </>
@@ -353,7 +360,7 @@ function OverlookedNote({ reasons }) {
 }
 
 // Spread of the Buy It Now prices behind the estimate
-function PriceRange({ comps }) {
+function PriceRange({ comps, brandPercent }) {
   const condition = CONDITION_NAMES[comps.condition];
 
   return (
@@ -364,8 +371,132 @@ function PriceRange({ comps }) {
       </span>{" "}
       across {comps.count} {condition ? `${condition} ` : ""}listings
       {comps.matchedBy === "name" && " matched by model name"}
+      {comps.details && `, same ${comps.details}`}
+      {brandPercent && `. Resale uses your ${brandPercent.brand} figure of ${brandPercent.percent}%`}
       {comps.ignored > 0 &&
         `, ${comps.ignored} very high or low ${comps.ignored === 1 ? "price" : "prices"} ignored`}
+    </p>
+  );
+}
+
+// eBay's item number, as Gixen and the eBay site use it. The Browse API
+// gives IDs like "v1|123456789012|0".
+export function itemNumber(itemId) {
+  return String(itemId ?? "").split("|")[1] || String(itemId ?? "");
+}
+
+// Gixen places your bid in the last seconds of the auction. Nothing is sent
+// to Gixen from here: this copies the item number and your limit, and
+// opens Gixen for you to paste them in.
+function SnipePanel({ item }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(null);
+  const number = itemNumber(item.itemId);
+
+  async function copy(label, text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(label);
+    } catch {
+      // Clipboard blocked: the figure is on screen to type in
+      setCopied(null);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="-mt-1 self-start text-xs font-medium text-sky-300 hover:text-sky-200"
+      >
+        Snipe with Gixen
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl bg-sky-400/10 p-3 text-xs text-sky-100 ring-1 ring-sky-400/20">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="font-semibold">Snipe with Gixen</span>
+        <button type="button" onClick={() => setOpen(false)} className="text-sky-200/70 hover:text-sky-100" aria-label="Close">
+          ✕
+        </button>
+      </div>
+      <ol className="space-y-2">
+        <SnipeStep n={1} label="Item number" value={number} copied={copied === "item"} onCopy={() => copy("item", number)} />
+        <SnipeStep
+          n={2}
+          label="Your maximum bid"
+          value={formatGbp(item.maxBid)}
+          copied={copied === "bid"}
+          onCopy={() => copy("bid", String(item.maxBid))}
+        />
+        <li className="flex items-center gap-2">
+          <span className="w-4 text-sky-200/70">3</span>
+          <a
+            href="https://www.gixen.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-sky-300 px-2.5 py-1 font-semibold text-sky-950 hover:bg-sky-200"
+          >
+            Open Gixen ↗
+          </a>
+          <span className="text-sky-200/70">and paste both in</span>
+        </li>
+      </ol>
+      <p className="mt-2 text-[11px] leading-snug text-sky-200/70">
+        Gixen bids for you in the last seconds. If you win, the purchase is binding, so only snipe what you'd happily
+        pay {formatGbp(item.maxBid)} plus postage for.
+      </p>
+    </div>
+  );
+}
+
+function SnipeStep({ n, label, value, copied, onCopy }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="w-4 text-sky-200/70">{n}</span>
+      <span className="text-sky-200/80">{label}</span>
+      <span className="font-mono font-semibold tabular-nums text-sky-50">{value}</span>
+      <button
+        type="button"
+        onClick={onCopy}
+        className="ml-auto rounded-lg px-2 py-0.5 ring-1 ring-sky-300/40 hover:bg-sky-300/10"
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </li>
+  );
+}
+
+// What the same watch would make sold on Vinted, where UK sellers pay no
+// fees and the buyer pays postage
+function VintedLine({ item }) {
+  const better = item.vintedProfit - item.profit;
+  return (
+    <p className="-mt-1 flex items-baseline justify-between gap-2 text-xs text-zinc-400">
+      <span>
+        Sold on Vinted:{" "}
+        <span className={`font-semibold tabular-nums ${item.vintedProfit > 0 ? "text-emerald-300" : "text-rose-300"}`}>
+          {item.vintedProfit > 0 ? "+" : ""}
+          {formatGbp(item.vintedProfit)}
+        </span>
+      </span>
+      {better > 0 && <span className="text-[11px] text-zinc-500">{formatGbp(better)} more than eBay</span>}
+    </p>
+  );
+}
+
+// Which way the model's asking prices moved, from the price index
+function TrendLine({ trend }) {
+  const steady = Math.abs(trend.percent) < 1;
+  const up = trend.percent > 0;
+  const since = new Date(`${trend.since}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return (
+    <p className={`-mt-2 text-[11px] ${steady ? "text-zinc-500" : up ? "text-emerald-300" : "text-rose-300"}`}>
+      {steady ? "Asking prices steady" : `${up ? "▲" : "▼"} Asking prices ${up ? "up" : "down"} ${Math.abs(trend.percent)}%`} since{" "}
+      {since}
     </p>
   );
 }
