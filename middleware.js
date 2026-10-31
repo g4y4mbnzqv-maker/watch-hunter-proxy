@@ -28,6 +28,6 @@ export async function middleware(req) {
 export const config = {
   // The unlock page and the files a phone needs to install the app stay open
   matcher: [
-    "/((?!unlock|api/unlock|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/|api/harvest).*)",
+    "/((?!unlock|api/unlock|_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|icons/|api/harvest|api/alerts/run).*)",
   ],
 };

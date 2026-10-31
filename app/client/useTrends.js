@@ -7,13 +7,17 @@ import { trendMap } from "@/lib/indexKey";
 // Empty when there's no database or no history yet.
 export function useTrends() {
   const [trends, setTrends] = useState({});
+  const [models, setModels] = useState([]);
 
   const refresh = useCallback(async () => {
     try {
       const res = await fetch("/api/index", { cache: "no-store" });
       if (!res.ok) return;
       const data = await res.json();
-      if (data.enabled) setTrends(trendMap(data.models));
+      if (data.enabled) {
+        setTrends(trendMap(data.models));
+        setModels(data.models);
+      }
     } catch {
       // Trends are extra; the cards work without them
     }
@@ -23,5 +27,5 @@ export function useTrends() {
     refresh();
   }, [refresh]);
 
-  return { trends, refreshTrends: refresh };
+  return { trends, models, refreshTrends: refresh };
 }

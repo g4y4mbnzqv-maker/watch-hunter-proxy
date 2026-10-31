@@ -63,7 +63,7 @@ export default function Home() {
   const topBrands = useMemo(() => cleanTopBrands(storedTopBrands), [storedTopBrands]);
 
   const usage = useUsage(now);
-  const { trends, refreshTrends } = useTrends();
+  const { trends, models: indexModels, refreshTrends } = useTrends();
   const dealBook = useDeals();
   // The deal to open when the sales log is shown, after "I bought this"
   const [openDealId, setOpenDealId] = useState(null);
@@ -231,6 +231,7 @@ export default function Home() {
           settings={settings}
           onSettingsChange={setSettings}
           openId={openDealId}
+          models={indexModels}
           onFindDeals={() => setMode("scan")}
         />
       )}

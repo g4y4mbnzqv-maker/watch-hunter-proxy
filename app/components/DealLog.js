@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { EmptyState, Stat } from "./Placeholders";
 import { formatGbp } from "./format";
+import { stockReminders } from "@/lib/stock";
+import { weeklyReview } from "@/lib/review";
+import { draftDescription, draftPrices, draftTitle } from "@/lib/listingDraft";
 import { MIN_SALES_FOR_RATIO, PLATFORMS, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
 
 // Watches you bought and sold: running profit, and what your real sale
 // prices say about the "Expected sale price" setting
-export default function DealLog({ dealBook, settings, onSettingsChange, openId, onFindDeals }) {
+export default function DealLog({ dealBook, settings, onSettingsChange, openId, onFindDeals, models = [] }) {
   const { deals, logPurchase, updateDeal, removeDeal } = dealBook;
   const [open, setOpen] = useState(openId ?? null);
   useEffect(() => {
@@ -16,6 +19,8 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
 
   const summary = useMemo(() => summarise(deals, settings), [deals, settings]);
   const ratio = useMemo(() => saleRatio(deals), [deals]);
+  const reminders = useMemo(() => stockReminders(deals, settings), [deals, settings]);
+  const review = useMemo(() => weeklyReview(deals, settings, { models }), [deals, settings, models]);
 
   function addManual() {
     setOpen(logPurchase({ title: "" }));
@@ -49,6 +54,16 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
         <Stat label="In stock" value={summary.inStock} note={summary.inStock ? `${formatGbp(summary.stockCost)} paid` : null} />
         <Stat label="Days to sell" value={summary.medianDays ?? "–"} note={summary.medianDays !== null ? "median" : null} />
       </div>
+
+      <ReviewPanel review={review} />
+
+      {reminders.length > 0 && (
+        <Reminders
+          reminders={reminders}
+          onOpen={(id) => setOpen(id)}
+          onDrop={(id, price) => updateDeal(id, { listedAt: price, listedOn: today() })}
+        />
+      )}
 
       <RatioPanel ratio={ratio} settings={settings} onSettingsChange={onSettingsChange} />
 
@@ -91,8 +106,8 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
       </ul>
 
       <p className="mt-6 text-xs text-zinc-500">
-        Your deal log is kept in this browser only. Download the CSV now and then as a backup, and for your tax
-        records.{" "}
+        Your sales log is saved in this browser, and synced to your other devices when syncing is on. Download the
+        CSV now and then as a backup, and for your tax records.{" "}
         <button type="button" onClick={onFindDeals} className="text-emerald-300 hover:text-emerald-200">
           Find more deals
         </button>
@@ -170,6 +185,213 @@ function RatioPanel({ ratio, settings, onSettingsChange }) {
   );
 }
 
+const today = () => new Date().toISOString().slice(0, 10);
+
+// The last 7 and 30 days, best and worst brands, and price moves
+function ReviewPanel({ review }) {
+  const { week, month, best, worst, movers } = review;
+  const anything = week.sold || week.bought || month.sold || month.bought || best || movers.rising.length || movers.falling.length;
+  if (!anything) return null;
+  return (
+    <section className="mb-6 rounded-2xl bg-zinc-900/60 p-4 ring-1 ring-white/5">
+      <h2 className="mb-3 text-sm font-medium text-zinc-100">Review</h2>
+      <div className="grid gap-3 text-xs text-zinc-400 sm:grid-cols-2">
+        <Period label="Last 7 days" period={week} />
+        <Period label="Last 30 days" period={month} />
+      </div>
+      {(best || worst) && (
+        <div className="mt-3 space-y-1 border-t border-white/5 pt-3 text-xs text-zinc-400">
+          {best && (
+            <p>
+              <span className="text-emerald-300">Best brand:</span> {best.brand}, {formatGbp(best.average)} a watch across{" "}
+              {best.count} sales{best.days !== null && `, ${best.days} days to sell`}.
+            </p>
+          )}
+          {worst && (
+            <p>
+              <span className={worst.average > 0 ? "text-amber-300" : "text-rose-300"}>Weakest brand:</span> {worst.brand},{" "}
+              {formatGbp(worst.average)} a watch across {worst.count} sales
+              {worst.average <= 0 ? ". Consider dropping it from Top deals." : "."}
+            </p>
+          )}
+        </div>
+      )}
+      {(movers.rising.length > 0 || movers.falling.length > 0) && (
+        <div className="mt-3 space-y-1 border-t border-white/5 pt-3 text-xs text-zinc-400">
+          {movers.rising.length > 0 && (
+            <p>
+              <span className="text-emerald-300">▲ Rising:</span>{" "}
+              {movers.rising.map((model) => `${model.label} ${model.change.percent}%`).join(", ")}
+            </p>
+          )}
+          {movers.falling.length > 0 && (
+            <p>
+              <span className="text-rose-300">▼ Falling:</span>{" "}
+              {movers.falling.map((model) => `${model.label} ${model.change.percent}%`).join(", ")}
+            </p>
+          )}
+          <p className="text-[11px] text-zinc-500">Asking prices over about 30 days, from the price index.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Period({ label, period }) {
+  return (
+    <div>
+      <div className="mb-1 text-[11px] uppercase tracking-widest text-zinc-500">{label}</div>
+      <p>
+        Sold {period.sold}, profit{" "}
+        <span className={`font-semibold tabular-nums ${period.profit >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+          {formatGbp(period.profit)}
+        </span>
+      </p>
+      <p>
+        Bought {period.bought}, spent <span className="tabular-nums text-zinc-200">{formatGbp(period.spent)}</span>
+      </p>
+    </div>
+  );
+}
+
+// Watches that need listing, or a price cut
+function Reminders({ reminders, onOpen, onDrop }) {
+  return (
+    <section className="mb-6 rounded-2xl bg-amber-400/10 p-4 text-sm text-amber-100 ring-1 ring-amber-400/20">
+      <h2 className="mb-2 font-medium">
+        {reminders.length} {reminders.length === 1 ? "watch needs" : "watches need"} attention
+      </h2>
+      <ul className="space-y-2 text-xs">
+        {reminders.map(({ deal, kind, days, suggestion }) => (
+          <li key={deal.id} className="flex flex-wrap items-center justify-between gap-2">
+            <span className="min-w-0 flex-1">
+              <span className="font-medium text-amber-50">{deal.title || "Untitled watch"}</span>
+              {kind === "unlisted"
+                ? ` · bought ${days} days ago and not listed yet`
+                : suggestion
+                ? ` · listed ${days} days at ${formatGbp(Number(deal.listedAt))} without selling`
+                : ` · listed ${days} days at break-even without selling. Try another site, or hold it.`}
+            </span>
+            {kind === "stale" && suggestion ? (
+              <button
+                type="button"
+                onClick={() => onDrop(deal.id, suggestion)}
+                className="rounded-full bg-amber-300 px-3 py-1 font-semibold text-amber-950 hover:bg-amber-200"
+              >
+                Drop to {formatGbp(suggestion)}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onOpen(deal.id)}
+                className="rounded-full px-3 py-1 font-semibold ring-1 ring-amber-300/50 hover:bg-amber-300/10"
+              >
+                {kind === "unlisted" ? "Draft a listing" : "Open"}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[11px] text-amber-200/70">
+        Suggested prices take 10% off and end in 9, never below what gets your money back after eBay fees. Updating
+        the price here doesn't change eBay; change the listing there too.
+      </p>
+    </section>
+  );
+}
+
+// A first draft of the listing for eBay or Vinted, to copy
+function ListingDraft({ deal, settings }) {
+  const [open, setOpen] = useState(false);
+  const [platform, setPlatform] = useState("ebay");
+  const [copied, setCopied] = useState(null);
+
+  if (!open) {
+    return (
+      <div className="sm:col-span-2">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-sky-200 ring-1 ring-sky-300/40 hover:bg-sky-300/10"
+        >
+          Draft a listing
+        </button>
+      </div>
+    );
+  }
+
+  const title = draftTitle(deal);
+  const text = draftDescription(deal, { platform });
+  const prices = draftPrices(deal, settings);
+
+  async function copy(label, value) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+    } catch {
+      setCopied(null);
+    }
+  }
+
+  return (
+    <div className="rounded-xl bg-sky-400/10 p-3 text-xs text-sky-100 ring-1 ring-sky-400/20 sm:col-span-2">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex rounded-full p-0.5 ring-1 ring-sky-300/30" role="group" aria-label="Selling on">
+          {[
+            ["ebay", "eBay"],
+            ["vinted", "Vinted"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={platform === key}
+              onClick={() => setPlatform(key)}
+              className={`rounded-full px-3 py-1 font-medium ${platform === key ? "bg-sky-300 text-sky-950" : "text-sky-200"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => setOpen(false)} aria-label="Close draft" className="text-sky-200/70 hover:text-sky-100">
+          ✕
+        </button>
+      </div>
+
+      {prices && (
+        <p className="mb-3">
+          {platform === "ebay" ? (
+            <>
+              List at <strong className="tabular-nums">{formatGbp(prices.ebay)}</strong> with offers on, and accept nothing
+              under <strong className="tabular-nums">{formatGbp(prices.lowestOffer)}</strong>.
+            </>
+          ) : (
+            <>
+              List at <strong className="tabular-nums">{formatGbp(prices.vinted)}</strong>. Vinted buyers pay a protection fee
+              on top, so a little under eBay sells faster.
+            </>
+          )}
+        </p>
+      )}
+
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-sky-200/80">Title ({title.length}/80)</span>
+        <button type="button" onClick={() => copy("title", title)} className="rounded-lg px-2 py-0.5 ring-1 ring-sky-300/40 hover:bg-sky-300/10">
+          {copied === "title" ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <p className="mb-3 rounded-lg bg-black/30 p-2 font-medium text-sky-50">{title}</p>
+
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-sky-200/80">Description: fill in the [brackets]</span>
+        <button type="button" onClick={() => copy("text", text)} className="rounded-lg px-2 py-0.5 ring-1 ring-sky-300/40 hover:bg-sky-300/10">
+          {copied === "text" ? "Copied" : "Copy"}
+        </button>
+      </div>
+      <pre className="whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-sans leading-relaxed text-sky-50">{text}</pre>
+    </div>
+  );
+}
+
 function sameBrandFigures(byBrand, current = {}) {
   return byBrand.length === Object.keys(current).length && byBrand.every((row) => current[row.brand] === row.percent);
 }
@@ -194,8 +416,8 @@ function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
             {sold ? ` · sold ${formatGbp(Number(deal.soldFor))}${days !== null ? ` after ${days} ${days === 1 ? "day" : "days"}` : ""}` : " · in stock"}
           </div>
         </div>
-        <div className={`text-right text-sm font-semibold tabular-nums ${profit === null ? "text-zinc-500" : profit >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-          {profit === null ? "Unsold" : `${profit > 0 ? "+" : ""}${formatGbp(profit)}`}
+        <div className={`text-right text-sm font-semibold tabular-nums ${profit === null || Math.round(profit) === 0 ? "text-zinc-500" : profit > 0 ? "text-emerald-300" : "text-rose-300"}`}>
+          {profit === null ? "Unsold" : Math.round(profit) === 0 ? "£0" : `${profit > 0 ? "+" : ""}${formatGbp(profit)}`}
         </div>
       </button>
 
@@ -217,6 +439,24 @@ function DealRow({ deal, settings, open, onToggle, onChange, onRemove }) {
             onChange={(askingMedian) => onChange({ askingMedian: askingMedian === "" ? null : askingMedian })}
             hint="Filled in from the app's estimate. Used to check your expected sale price."
           />
+
+          {!sold && (
+            <>
+              <div className="border-t border-white/5 pt-3 text-xs font-medium uppercase tracking-widest text-zinc-500 sm:col-span-2">
+                Listing
+              </div>
+              <Field label="Listed on">
+                <input type="date" value={deal.listedOn ?? ""} onChange={(e) => onChange({ listedOn: e.target.value })} className={INPUT} />
+              </Field>
+              <Money
+                label="Listed at"
+                value={deal.listedAt ?? ""}
+                onChange={(listedAt) => onChange({ listedAt })}
+                hint="So the app can remind you if it hasn't sold in three weeks."
+              />
+              <ListingDraft deal={deal} settings={settings} />
+            </>
+          )}
 
           <div className="border-t border-white/5 pt-3 text-xs font-medium uppercase tracking-widest text-zinc-500 sm:col-span-2">
             Sale

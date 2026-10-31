@@ -2,6 +2,7 @@
 
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { useSyncStatus } from "../client/sync";
+import { useDealAlerts } from "../client/useDealAlerts";
 
 const FIELDS = [
   {
@@ -83,6 +84,8 @@ export default function SettingsPanel({ settings, onChange }) {
       </h3>
       <FieldGrid fields={SELLER_FIELDS} settings={settings} onChange={onChange} />
 
+      <DealAlerts />
+
       <SyncLine />
     </section>
   );
@@ -98,6 +101,44 @@ const SYNC_TEXT = {
   "no-database": { dot: "bg-amber-400", text: "Saved in this browser only. Connect a database in Vercel to sync across devices." },
   offline: { dot: "bg-amber-400", text: "Couldn't reach the server, so changes are saved in this browser for now." },
 };
+
+const ALERT_TEXT = {
+  checking: "Checking…",
+  unsupported: "This browser can't receive alerts while the app is closed.",
+  "install-first": "On iPhone, add Watch Hunter to your home screen first (Share, then Add to Home Screen), then open it from there.",
+  unavailable: "Alerts need a database and APP_PASSCODE set in Vercel, like syncing.",
+  blocked: "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back.",
+  off: "Get a notification when a new Buy It Now deal turns up in your Top deals brands, even with the app closed.",
+  on: "On for this device. New Buy It Now deals in your Top deals brands are checked about once an hour, 7am to 11pm.",
+};
+
+function DealAlerts() {
+  const { status, message, turnOn, turnOff, sendTest } = useDealAlerts();
+  return (
+    <div className="mt-6 border-t border-white/5 pt-4">
+      <h3 className="text-sm font-medium text-zinc-100">Deal alerts</h3>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-400">{ALERT_TEXT[status]}</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {status === "off" && (
+          <button type="button" onClick={turnOn} className="rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-zinc-200">
+            Turn on alerts for this device
+          </button>
+        )}
+        {status === "on" && (
+          <>
+            <button type="button" onClick={sendTest} className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/15 hover:bg-white/5">
+              Send a test alert
+            </button>
+            <button type="button" onClick={turnOff} className="rounded-full px-3.5 py-1.5 text-xs text-zinc-400 hover:text-zinc-200">
+              Turn off
+            </button>
+          </>
+        )}
+      </div>
+      {message && <p className="mt-2 text-xs text-amber-300">{message}</p>}
+    </div>
+  );
+}
 
 function SyncLine() {
   const status = useSyncStatus();
