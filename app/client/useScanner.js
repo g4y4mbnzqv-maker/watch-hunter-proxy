@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { runPool } from "./listings";
+import { readJson } from "./readJson";
 
 // Label used in place of a brand once a Top deals scan has run
 export const TOP_DEALS = "Top deals";
@@ -61,7 +62,7 @@ export function useScanner({ listingTypes, includeJunk, onLimitHit, onScanned })
     if (includeJunk) params.set("includeJunk", "1");
 
     const res = await fetch(`/api/scan?${params}`);
-    const data = await res.json();
+    const data = await readJson(res);
 
     if (data.limitReached) onLimitHit();
 

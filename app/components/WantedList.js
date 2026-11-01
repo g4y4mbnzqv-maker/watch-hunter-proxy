@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatGbp, formatTimeLeft } from "./format";
 import { AUCTION_WINDOW_HOURS, MAX_WANTED, cleanWanted } from "@/lib/wanted";
+import { readJson } from "../client/readJson";
 
 // Models you're after and the most you'd pay. The hourly alert check looks
 // for them; "Search now" looks straight away.
@@ -94,9 +95,10 @@ function WantedRow({ want, now, paused, onRemove }) {
   async function searchNow() {
     setState({ loading: true });
     try {
-      const params = new URLSearchParams({ brand: want.query, types: "AUCTION,BUY_IT_NOW" });
+      // Only prices are needed, so no resale lookups
+      const params = new URLSearchParams({ brand: want.query, types: "AUCTION,BUY_IT_NOW", estimates: "0" });
       const res = await fetch(`/api/scan?${params}`);
-      const data = await res.json();
+      const data = await readJson(res);
       if (!res.ok || data.error) throw new Error(data.message || `Search failed (${res.status})`);
       const under = data.results
         .filter((item) => item.totalCost > 0 && item.totalCost <= want.maxPrice)

@@ -5,6 +5,8 @@ import { isGem } from "@/lib/gems";
 const LISTING_TYPES = ["AUCTION", "BUY_IT_NOW"];
 
 export const dynamic = "force-dynamic";
+// A scan with many resale lookups can take longer than the default limit
+export const maxDuration = 60;
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -23,6 +25,11 @@ export async function GET(req) {
     );
   }
 
+  // eBay turns away very long searches
+  if (brand.length > 100) {
+    return Response.json({ error: true, message: "Keep the search under 100 characters" }, { status: 400 });
+  }
+
   if (!brand) {
     return Response.json(
       { error: true, message: "Enter a brand to search" },
@@ -31,12 +38,14 @@ export async function GET(req) {
   }
 
   try {
-    // Hidden gems: unbranded cheap listings, judged by eye, so no resale
-    // lookups and nothing for the price index
-    if (searchParams.get("gems") === "1") {
+    // Hidden gems (unbranded cheap listings, judged by eye) and wanted-list
+    // searches (compared with your own price) need no resale lookups, which
+    // would cost an eBay call per model, and add nothing to the price index
+    const gems = searchParams.get("gems") === "1";
+    if (gems || searchParams.get("estimates") === "0") {
       const { items, stats } = await searchListings(brand, { includeJunk, types });
-      const gems = items.filter((item) => isGem(item)).map((item) => ({ ...item, comps: null }));
-      return Response.json({ brand, count: gems.length, stats, limitReached: false, results: gems });
+      const results = items.filter((item) => !gems || isGem(item)).map((item) => ({ ...item, comps: null }));
+      return Response.json({ brand, count: results.length, stats, limitReached: false, results });
     }
 
     const { items: listings, stats } = await searchListings(brand, { includeJunk, types });

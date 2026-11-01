@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStoredState } from "./hooks";
 import { SNAPSHOT_FIELDS, SORTERS, analyseAll, endsWithin, isLive, notify, pick } from "./listings";
+import { readJson } from "./readJson";
 
 // Saved listings with this many minutes left go in the ending-soon banner
 // and, if alerts are on, trigger a notification
@@ -55,14 +56,21 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
     setRefreshError(null);
 
     try {
-      const res = await fetch(`/api/items?${new URLSearchParams({ ids: ids.join(",") })}`);
-      const data = await res.json();
+      // The server takes up to REFRESH_BATCH at a time
+      const data = { items: [], missing: [] };
+      for (let start = 0; start < ids.length; start += REFRESH_BATCH) {
+        const batch = ids.slice(start, start + REFRESH_BATCH);
+        const res = await fetch(`/api/items?${new URLSearchParams({ ids: batch.join(",") })}`);
+        const part = await readJson(res);
 
-      if (data.limitReached) onLimitHit();
-      if (!res.ok || data.error) {
-        throw Object.assign(new Error(data.message || `Refresh failed (${res.status})`), {
-          limitReached: Boolean(data.limitReached),
-        });
+        if (part.limitReached) onLimitHit();
+        if (!res.ok || part.error) {
+          throw Object.assign(new Error(part.message || `Refresh failed (${res.status})`), {
+            limitReached: Boolean(part.limitReached),
+          });
+        }
+        data.items.push(...part.items);
+        data.missing.push(...part.missing);
       }
 
       setWatchlist((current) => {
@@ -183,6 +191,9 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
     disableAlerts: () => setAlertsOn(false),
   };
 }
+
+// Matches MAX_ITEMS in app/api/items/route.js
+const REFRESH_BATCH = 50;
 
 // Auctions are checked once more after they end, for the final bid; after
 // this long there's no point asking eBay again

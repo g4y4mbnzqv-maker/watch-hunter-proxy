@@ -17,6 +17,6 @@ export async function GET(req) {
   const reason = syncUnavailable();
   if (reason) return Response.json({ error: true, message: `Alerts are off: ${reason}` }, { status: 503 });
 
-  const report = await runAlerts();
+  const report = await runAlerts({ origin: new URL(req.url).origin });
   return Response.json({ ok: true, report });
 }
