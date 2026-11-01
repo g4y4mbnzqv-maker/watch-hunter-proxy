@@ -38,7 +38,7 @@ const WATCHLIST_STALE_MS = 60_000;
 
 export default function Home() {
   const now = useNow(30_000);
-  const [mode, setMode] = useState("home");
+  const [mode, setMode] = useState("scan");
   const [showSettings, setShowSettings] = useState(false);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");

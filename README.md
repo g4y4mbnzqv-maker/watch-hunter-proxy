@@ -26,7 +26,7 @@ It then opens full screen from its own icon.
 
 ## Home dashboard
 
-The app opens on **Home** (`app/components/Dashboard.js`, `lib/dashboard.js`), which brings the main figures onto one screen, each linking to its tab:
+The **Home** tab (`app/components/Dashboard.js`, `lib/dashboard.js`) brings the main figures onto one screen, each linking to its tab:
 
 - A setup checklist (database, passcode, deal alerts on this device, a backup in the last 30 days) until it's all done.
 - Profit this month and this tax year, stock in hand with how many watches need attention, and eBay calls used today.
