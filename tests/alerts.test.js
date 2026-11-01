@@ -120,4 +120,26 @@ describe("deal alerts", () => {
     vi.useRealTimers();
     expect(second.wanted).toBe(0);
   });
+
+  it("doesn't alert again on a listing still up after the seen list is pruned", async () => {
+    await addSubscription(subscription);
+    await writeState("wh-top-brands", ["Nobrandatall"], 1000);
+    await writeState("wh-wanted", [{ id: "skx", query: "Seiko SKX007", maxPrice: 180 }], 1000);
+    const sent = vi.spyOn(webpush, "sendNotification").mockResolvedValue({ statusCode: 201 });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    fakeEbay([bin("w1", "Seiko SKX007 jubilee", 170)]);
+    await runAlerts({ now: new Date("2026-12-01T12:00:00Z") });
+    expect(sent).toHaveBeenCalledTimes(1);
+
+    // Every row is now 20 days old, as if the listing had sat there all along
+    await pg.query(`UPDATE alert_seen SET seen_at = now() - interval '20 days'`);
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 5 * 60_000);
+    // The next check refreshes it before pruning, so it isn't alerted again
+    await runAlerts({ now: new Date("2026-12-01T13:00:00Z"), startedAt: Date.now() });
+    vi.setSystemTime(Date.now() + 5 * 60_000);
+    await runAlerts({ now: new Date("2026-12-01T14:00:00Z"), startedAt: Date.now() });
+    vi.useRealTimers();
+    expect(sent).toHaveBeenCalledTimes(1);
+  });
 });

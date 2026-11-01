@@ -102,6 +102,10 @@ Setup:
 
 Each run costs about two eBay searches per brand, plus resale lookups for new listings only: a few hundred calls a day with nine brands.
 
+## Backup
+
+Settings, then Backup, downloads your watchlist, wanted list, sales log, settings, resale values and other saved choices as one JSON file (`app/client/backup.js`). "Restore from a backup" puts them back after asking, on this device and, with syncing on, on your other devices. Files that aren't Watch Hunter backups are turned away, and only the app's own data is read from them.
+
 ## Syncing between devices
 
 With a database connected and `APP_PASSCODE` set, your watchlist, settings, resale values, sales log, Top deals brands, filters and skipped listings are saved to the database (`lib/userState.js`, `/api/state`) as well as the browser, so your phone and computer show the same. Each item is saved whole with the time it changed, and the newest change wins. The app catches up when it comes back into view. Data saved on two devices before syncing was switched on is combined for the watchlist, resale values, skipped listings and sales log; for settings and filters the first device to sync wins. Alerts and the cards or swipe layout stay per device. Without a passcode, syncing stays off so nobody else can read your data, and Settings says why.

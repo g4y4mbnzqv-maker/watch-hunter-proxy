@@ -2,6 +2,8 @@ import { EbayError } from "@/lib/ebay";
 import { MAX_TITLES, checkPrices } from "@/lib/priceCheck";
 
 export const dynamic = "force-dynamic";
+// A scan with many resale lookups can take longer than the default limit
+export const maxDuration = 60;
 
 // Current asking prices for watch titles: { titles: [...] } in, { prices:
 // [...] } out, one per title

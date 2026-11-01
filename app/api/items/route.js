@@ -1,6 +1,8 @@
 import { getAuctions, EbayError } from "@/lib/ebay";
 
 export const dynamic = "force-dynamic";
+// A scan with many resale lookups can take longer than the default limit
+export const maxDuration = 60;
 
 // Keeps one refresh within a sensible number of eBay calls
 const MAX_ITEMS = 50;

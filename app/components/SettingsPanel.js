@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { useSyncStatus } from "../client/sync";
 import { useDealAlerts } from "../client/useDealAlerts";
+import { downloadBackup, readBackup, restoreBackup } from "../client/backup";
 
 const FIELDS = [
   {
@@ -86,6 +88,8 @@ export default function SettingsPanel({ settings, onChange }) {
 
       <DealAlerts />
 
+      <Backup />
+
       <SyncLine />
     </section>
   );
@@ -134,6 +138,59 @@ function DealAlerts() {
             </button>
           </>
         )}
+      </div>
+      {message && <p className="mt-2 text-xs text-amber-300">{message}</p>}
+    </div>
+  );
+}
+
+// Download everything as one file, or put a backup back
+function Backup() {
+  const fileInput = useRef(null);
+  const [message, setMessage] = useState(null);
+
+  async function restore(file) {
+    setMessage(null);
+    try {
+      const { data, exportedAt } = readBackup(await file.text());
+      const when = exportedAt ? new Date(exportedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : "an unknown date";
+      if (!window.confirm(`Replace your watchlist, wanted list, sales log and settings with the backup from ${when}?`)) return;
+      const count = await restoreBackup(data);
+      setMessage(`Restored ${count} items. Reloading…`);
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  return (
+    <div className="mt-6 border-t border-white/5 pt-4">
+      <h3 className="text-sm font-medium text-zinc-100">Backup</h3>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+        Save your watchlist, wanted list, sales log, settings and resale values as one file, and put them back from it
+        on any device. Worth doing now and then, and before clearing your browser.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={downloadBackup} className="rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-zinc-200">
+          Download backup
+        </button>
+        <button
+          type="button"
+          onClick={() => fileInput.current?.click()}
+          className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-zinc-200 ring-1 ring-white/15 hover:bg-white/5"
+        >
+          Restore from a backup
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/json,.json"
+          aria-label="Backup file"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && restore(e.target.files[0])}
+        />
       </div>
       {message && <p className="mt-2 text-xs text-amber-300">{message}</p>}
     </div>

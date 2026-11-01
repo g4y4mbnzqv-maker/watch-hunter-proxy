@@ -2,6 +2,7 @@
 
 import { extractModelRef, modelKey } from "@/lib/models";
 import { extractModelName } from "@/lib/nicknames";
+import { readJson } from "./readJson";
 
 // The model a title names, the same way scans group listings
 export function titleModelKey(title) {
@@ -16,7 +17,7 @@ export async function fetchPrices(titles) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ titles }),
   });
-  const data = await res.json();
+  const data = await readJson(res);
   if (!res.ok || data.error) throw new Error(data.message || `Price check failed (${res.status})`);
   return data.prices;
 }
