@@ -7,6 +7,7 @@ import Results from "./components/Results";
 import Watchlist from "./components/Watchlist";
 import PriceIndex from "./components/PriceIndex";
 import DealLog from "./components/DealLog";
+import Dashboard from "./components/Dashboard";
 import SettingsPanel from "./components/SettingsPanel";
 import EndingSoon from "./components/EndingSoon";
 import LimitBanner from "./components/LimitBanner";
@@ -37,7 +38,7 @@ const WATCHLIST_STALE_MS = 60_000;
 
 export default function Home() {
   const now = useNow(30_000);
-  const [mode, setMode] = useState("scan");
+  const [mode, setMode] = useState("home");
   const [showSettings, setShowSettings] = useState(false);
   const [view, setView] = useState("deals");
   const [sort, setSort] = useState("ending");
@@ -198,6 +199,18 @@ export default function Home() {
 
   const hasResults = !(scanner.results.length === 0 && scanner.scanStats);
 
+  // The last scan in brief, for the dashboard
+  const lastScan = useMemo(() => {
+    const priced = shown.filter((item) => item.profit !== null && item.status !== "check");
+    return {
+      brand: scanner.scannedBrand,
+      when: scanner.restoredAt ? timeAgo(scanner.restoredAt, now) : scanner.scannedBrand ? "this visit" : null,
+      count: shown.length,
+      deals: shown.filter((item) => item.status === "deal").length,
+      best: priced.length ? Math.max(...priced.map((item) => item.profit)) : null,
+    };
+  }, [shown, scanner.scannedBrand, scanner.restoredAt, now]);
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
       {/* Soft glow behind the top of the page */}
@@ -220,6 +233,24 @@ export default function Home() {
         <div className="mb-6">
           <SettingsPanel settings={settings} onChange={setSettings} />
         </div>
+      )}
+
+      {mode === "home" && (
+        <Dashboard
+          deals={dealBook.deals}
+          settings={settings}
+          watchItems={watchItems}
+          wanted={wanted}
+          usage={usage.usage}
+          models={indexModels}
+          scan={lastScan}
+          now={now}
+          onNavigate={(target) => {
+            if (target === "settings") setShowSettings(true);
+            else setMode(target);
+            window.scrollTo({ top: 0 });
+          }}
+        />
       )}
 
       {mode === "watchlist" && (
