@@ -24,6 +24,16 @@ Run the tests with `npm test`.
 
 It then opens full screen from its own icon.
 
+## Home dashboard
+
+The app opens on **Home** (`app/components/Dashboard.js`, `lib/dashboard.js`), which brings the main figures onto one screen, each linking to its tab:
+
+- A setup checklist (database, passcode, deal alerts on this device, a backup in the last 30 days) until it's all done.
+- Profit this month and this tax year, stock in hand with how many watches need attention, and eBay calls used today.
+- A bar chart of profit by month for the last six months. Hover or tab to a bar for its figures; screen readers get the same as a table.
+- The next auctions ending on your watchlist with your bid limits, and how many models are on your wanted list.
+- The last scan in brief, and the biggest asking-price moves from the price index.
+
 ## How it works
 
 - `lib/ebay.js` gets an application token from eBay (client credentials, cached until it expires) and calls the Browse API for auctions on EBAY_GB, sorted by ending soonest. Only watches located in the UK are included, for both auctions and the Buy It Now prices used to estimate resale (`itemLocationCountry:GB`).

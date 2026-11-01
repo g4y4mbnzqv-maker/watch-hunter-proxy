@@ -24,8 +24,24 @@ export function makeBackup(now = new Date()) {
   return { app: BACKUP_APP, version: BACKUP_VERSION, exportedAt: now.toISOString(), data };
 }
 
+const LAST_BACKUP_KEY = "wh-last-backup";
+
+// When this browser last downloaded a backup, or null
+export function lastBackupAt() {
+  try {
+    return Number(window.localStorage.getItem(LAST_BACKUP_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
 export function downloadBackup() {
   const backup = makeBackup();
+  try {
+    window.localStorage.setItem(LAST_BACKUP_KEY, String(Date.now()));
+  } catch {
+    // Storage blocked: the dashboard just won't know
+  }
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);

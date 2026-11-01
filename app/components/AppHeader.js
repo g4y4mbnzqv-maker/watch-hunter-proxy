@@ -3,7 +3,8 @@
 import UsageMeter from "./UsageMeter";
 
 const TABS = [
-  { key: "scan", label: "Find deals" },
+  { key: "home", label: "Home" },
+  { key: "scan", label: "Find" },
   { key: "watchlist", label: "Watchlist" },
   { key: "index", label: "Prices" },
   { key: "deals", label: "Sales" },
