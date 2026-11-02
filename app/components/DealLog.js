@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState, Stat } from "./Placeholders";
 import { formatGbp } from "./format";
 import { stockReminders } from "@/lib/stock";
@@ -167,7 +167,7 @@ function LinkAdder({ deals, settings, logPurchase, onOpen, sharedLink, onSharedL
         setMessage({ tone: "info", text: "That watch is already in your log, so it's opened below." });
       } else if (data.found) {
         const { item, comps } = data;
-        const resale = comps?.median ? Math.round((comps.median * resalePercentFor(item, settings).percent) / 100) : null;
+        const resale = comps?.median ? Math.round(comps.median * resalePercentFor(item, settings).percent) / 100 : null;
         onOpen(logPurchase({ ...item, comps, resale }));
         setMessage({
           tone: "good",
@@ -188,14 +188,16 @@ function LinkAdder({ deals, settings, logPurchase, onOpen, sharedLink, onSharedL
     }
   }
 
-  // A link shared to the app from the eBay app, on Android
+  // A link shared to the app from the eBay app, on Android. Added once,
+  // even if this runs twice (React does that in development).
+  const usedShare = useRef(null);
   useEffect(() => {
-    if (!sharedLink) return;
+    if (!sharedLink || usedShare.current === sharedLink) return;
+    usedShare.current = sharedLink;
     setText(sharedLink);
     onSharedLinkUsed?.();
     add(sharedLink);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sharedLink]);
+  }, [sharedLink]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tones = { good: "text-emerald-300", info: "text-zinc-300", bad: "text-rose-300" };
 

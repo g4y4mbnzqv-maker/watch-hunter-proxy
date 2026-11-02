@@ -37,6 +37,19 @@ describe("eBay links", () => {
     const page = async () =>
       new Response('<script>location="https:\\/\\/www.ebay.co.uk\\/itm\\/123456789012"</script>', { headers: { "content-type": "text/html" } });
     expect(await resolveItemNumber("https://ebay.us/abc", page)).toBe("123456789012");
+
+    const down = async () => {
+      throw new TypeError("fetch failed");
+    };
+    expect(await resolveItemNumber("https://ebay.io/m/x", down)).toBeNull();
+
+    let hops = 0;
+    const loop = async () => {
+      hops++;
+      return new Response(null, { status: 302, headers: { location: "https://ebay.io/m/again" } });
+    };
+    expect(await resolveItemNumber("https://ebay.io/m/x", loop)).toBeNull();
+    expect(hops).toBe(6);
   });
 });
 
