@@ -82,6 +82,18 @@ export default function Home() {
     [logPurchase]
   );
 
+  // A link shared to the app from the eBay app (Android's share menu) opens
+  // the sales log and adds the watch
+  const [sharedLink, setSharedLink] = useState(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shared = [params.get("url"), params.get("text"), params.get("title")].filter(Boolean).join(" ");
+    if (!shared) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    setSharedLink(shared);
+    setMode("deals");
+  }, []);
+
   useEffect(() => {
     // Phones need a service worker to show notifications
     if ("serviceWorker" in navigator) {
@@ -274,6 +286,8 @@ export default function Home() {
           onSettingsChange={setSettings}
           openId={openDealId}
           models={indexModels}
+          sharedLink={sharedLink}
+          onSharedLinkUsed={() => setSharedLink(null)}
           onFindDeals={() => setMode("scan")}
         />
       )}
