@@ -89,6 +89,7 @@ The Prices tab tracks asking prices per model over time.
 
 The Sales tab records watches you buy and sell.
 
+- **Add from an eBay link:** paste a listing's link (the eBay app's Share, then Copy link, gives an `ebay.io` address), a full eBay address or an item number. The app follows the link to the listing through eBay's own addresses only, then fills in the title, price with postage, photo and today's asking median through the Browse API (`/api/link`, `lib/ebayLink.js`). A listing that has ended, as bought ones often have, is added with its link for you to fill in. On Android, an installed app also appears in the share menu, so sharing a listing from the eBay app adds it straight to the log.
 - On a watchlist card, "I bought this" adds the watch with its price, today's date and the median asking price the estimate came from. "Add a watch" adds one by hand.
 - Add the sale price, date and where it sold. eBay fees default to the percentage in Settings and Vinted to none; type your own to override.
 - The tab shows profit so far, sales, stock still unsold and the median days to sell.

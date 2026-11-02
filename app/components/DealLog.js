@@ -7,13 +7,14 @@ import { stockReminders } from "@/lib/stock";
 import { weeklyReview } from "@/lib/review";
 import { draftDescription, draftPrices, draftTitle } from "@/lib/listingDraft";
 import { fetchPrices, titleModelKey } from "../client/priceCheck";
+import { readJson } from "../client/readJson";
 import { resalePercentFor } from "@/lib/profit";
 import { REPORTING_AMOUNT, REPORTING_SALES, TRADING_ALLOWANCE, inTaxYear, platformReporting, salesTaxYears, taxYearSummary } from "@/lib/tax";
 import { MIN_SALES_FOR_RATIO, PLATFORMS, pastSales, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
 
 // Watches you bought and sold: running profit, and what your real sale
 // prices say about the "Expected sale price" setting
-export default function DealLog({ dealBook, settings, onSettingsChange, openId, onFindDeals, models = [] }) {
+export default function DealLog({ dealBook, settings, onSettingsChange, openId, onFindDeals, models = [], sharedLink, onSharedLinkUsed }) {
   const { deals, logPurchase, updateDeal, removeDeal } = dealBook;
   const [open, setOpen] = useState(openId ?? null);
   useEffect(() => {
@@ -38,19 +39,35 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
     URL.revokeObjectURL(link.href);
   }
 
+  const linkAdder = (
+    <LinkAdder
+      deals={deals}
+      settings={settings}
+      logPurchase={logPurchase}
+      onOpen={setOpen}
+      sharedLink={sharedLink}
+      onSharedLinkUsed={onSharedLinkUsed}
+    />
+  );
+
   if (!deals.length) {
     return (
-      <EmptyState
-        title="No deals logged yet."
-        body='When you win or buy a watch, tap "I bought this" on it in your watchlist, or add it here. Log the sale when it goes, and the app learns what your watches really sell for.'
-        action="Add a watch"
-        onAction={addManual}
-      />
+      <section>
+        {linkAdder}
+        <EmptyState
+          title="No deals logged yet."
+          body='Paste the eBay link of a watch you bought above, tap "I bought this" on it in your watchlist, or add it by hand. Log the sale when it goes, and the app learns what your watches really sell for.'
+          action="Add a watch by hand"
+          onAction={addManual}
+        />
+      </section>
     );
   }
 
   return (
     <section>
+      {linkAdder}
+
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Profit so far" value={formatGbp(summary.profit)} accent={summary.profit > 0} note={`${summary.sold} sold`} />
         <Stat label="Sales" value={formatGbp(summary.revenue)} />
@@ -121,6 +138,104 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
         </button>
       </p>
     </section>
+  );
+}
+
+// Paste or share an eBay link to add a watch you bought. The listing's
+// title, price with postage, photo and today's asking prices fill in when
+// eBay still shows it; a bought listing has often ended, and then the watch
+// is added with its link for you to fill in.
+function LinkAdder({ deals, settings, logPurchase, onOpen, sharedLink, onSharedLinkUsed }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
+
+  async function add(value) {
+    const link = value.trim();
+    if (!link || busy) return;
+    setBusy(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/link?url=${encodeURIComponent(link)}`);
+      const data = await readJson(res);
+      if (!res.ok || data.error) throw new Error(data.message || `Couldn't read that link (${res.status})`);
+
+      const number = data.found ? data.item.itemId.split("|")[1] ?? data.item.itemId : data.itemNumber;
+      const existing = deals.find((deal) => deal.itemId && (deal.itemId === data.item?.itemId || deal.itemId.split("|")[1] === number));
+      if (existing) {
+        onOpen(existing.id);
+        setMessage({ tone: "info", text: "That watch is already in your log, so it's opened below." });
+      } else if (data.found) {
+        const { item, comps } = data;
+        const resale = comps?.median ? Math.round((comps.median * resalePercentFor(item, settings).percent) / 100) : null;
+        onOpen(logPurchase({ ...item, comps, resale }));
+        setMessage({
+          tone: "good",
+          text: `Added. Check "Paid, including postage": it's the listing's ${item.listingType === "AUCTION" ? "current bid" : "price"} plus postage, so change it if you paid less after an offer.`,
+        });
+      } else {
+        onOpen(logPurchase({ itemId: `v1|${number}|0`, title: "", url: data.url }));
+        setMessage({
+          tone: "info",
+          text: "eBay no longer shows this listing (bought listings usually end), so it's added with the link. Type the title and what you paid below.",
+        });
+      }
+      setText("");
+    } catch (err) {
+      setMessage({ tone: "bad", text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // A link shared to the app from the eBay app, on Android
+  useEffect(() => {
+    if (!sharedLink) return;
+    setText(sharedLink);
+    onSharedLinkUsed?.();
+    add(sharedLink);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedLink]);
+
+  const tones = { good: "text-emerald-300", info: "text-zinc-300", bad: "text-rose-300" };
+
+  return (
+    <form
+      className="mb-6 rounded-2xl bg-zinc-900/60 p-4 ring-1 ring-white/5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        add(text);
+      }}
+    >
+      <label htmlFor="deal-link" className="block text-sm font-medium text-zinc-200">
+        Add a watch from its eBay link
+      </label>
+      <p className="mt-0.5 text-xs text-zinc-500">In the eBay app, tap Share, then Copy link, and paste it here.</p>
+      <div className="mt-3 flex gap-2">
+        <input
+          id="deal-link"
+          type="text"
+          inputMode="url"
+          autoComplete="off"
+          placeholder="https://ebay.io/m/… or an item number"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className={`${INPUT} min-w-0 flex-1`}
+        />
+        <button
+          type="submit"
+          disabled={busy || !text.trim()}
+          className="shrink-0 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 disabled:opacity-40"
+        >
+          {busy ? "Adding…" : "Add"}
+        </button>
+      </div>
+      {message && (
+        <p role="status" className={`mt-2 text-xs ${tones[message.tone]}`}>
+          {message.text}
+        </p>
+      )}
+    </form>
   );
 }
 
