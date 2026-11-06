@@ -20,7 +20,11 @@ describe("dashboard figures", () => {
   it("works out which setup steps are done", () => {
     const now = Date.parse("2026-11-25T12:00:00Z");
     const steps = setupSteps({ sync: "on", alerts: "off", lastBackup: now - 40 * 86_400_000, now });
-    expect(steps.map((step) => step.done)).toEqual([true, true, false, false]);
+    expect(steps.map((step) => step.done)).toEqual([true, true, false, false, false, false]);
+    const runs = { alerts: now - 2 * 3_600_000, harvest: now - 40 * 3_600_000 };
+    const withRuns = setupSteps({ sync: "on", alerts: "on", lastBackup: now, runs, now });
+    expect(withRuns.find((step) => step.key === "alert-check")).toMatchObject({ done: true, last: runs.alerts });
+    expect(withRuns.find((step) => step.key === "price-run").done).toBe(false);
     expect(setupSteps({ sync: "no-database", alerts: "unavailable", lastBackup: null, now })[0].done).toBe(false);
   });
 });

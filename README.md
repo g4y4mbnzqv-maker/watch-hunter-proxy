@@ -28,7 +28,7 @@ It then opens full screen from its own icon.
 
 The **Home** tab (`app/components/Dashboard.js`, `lib/dashboard.js`) brings the main figures onto one screen, each linking to its tab:
 
-- A setup checklist (database, passcode, deal alerts on this device, a backup in the last 30 days) until it's all done.
+- A setup checklist until it's all done: database, passcode, deal alerts on this device, the hourly alert check having run in the last 10 hours (which shows the GitHub secrets work), the daily price run in the last 30 hours, and a backup in the last 30 days. The scheduled jobs record each run in a `run_log` table (`lib/runLog.js`, `/api/status`).
 - Profit this month and this tax year, stock in hand with how many watches need attention, and eBay calls used today.
 - A bar chart of profit by month for the last six months. Hover or tab to a bar for its figures; screen readers get the same as a table.
 - The next auctions ending on your watchlist with your bid limits, and how many models are on your wanted list.
@@ -160,3 +160,7 @@ Each scan makes 1 search call per listing type (2 for brands with known misspell
 - Titles without a model reference get no estimate until you add a value yourself.
 - The seller check uses the feedback score eBay returns in search results. That score includes feedback from buying as well as selling, and the Browse API doesn't give account age, so open the seller's profile before bidding on anything flagged.
 - Profit is worked out at the current bid. "Bid up to" is the figure to act on, because bids rise towards the end of an auction.
+
+## Tests
+
+`npm test` runs the test suite (Vitest, with an in-memory Postgres for database code). `.github/workflows/test.yml` runs the tests and a production build on every pull request and every change to main, free on GitHub Actions.

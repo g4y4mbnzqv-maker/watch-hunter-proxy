@@ -1,6 +1,7 @@
 import { runAlerts } from "@/lib/alerts";
 import { refusal } from "@/lib/cronAuth";
 import { syncUnavailable } from "@/lib/userState";
+import { noteRun } from "@/lib/runLog";
 
 export const dynamic = "force-dynamic";
 // Several brands are checked, so this needs longer than a normal request
@@ -17,6 +18,8 @@ export async function GET(req) {
   const reason = syncUnavailable();
   if (reason) return Response.json({ error: true, message: `Alerts are off: ${reason}` }, { status: 503 });
 
+  // Noted before the check, so quiet hours still count as the schedule working
+  await noteRun("alerts");
   const report = await runAlerts({ origin: new URL(req.url).origin });
   return Response.json({ ok: true, report });
 }
