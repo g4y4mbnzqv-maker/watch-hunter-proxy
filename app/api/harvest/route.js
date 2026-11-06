@@ -1,6 +1,7 @@
 import { harvest } from "@/lib/harvest";
 import { priceIndexEnabled } from "@/lib/priceIndex";
 import { refusal } from "@/lib/cronAuth";
+import { noteRun } from "@/lib/runLog";
 
 export const dynamic = "force-dynamic";
 // The harvest scans several brands, so it needs longer than a normal request
@@ -19,6 +20,7 @@ export async function GET(req) {
     return Response.json({ error: true, message: "No database is connected" }, { status: 503 });
   }
 
+  await noteRun("harvest");
   const report = await harvest();
   return Response.json({ ok: true, report });
 }

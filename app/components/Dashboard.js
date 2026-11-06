@@ -23,13 +23,21 @@ export default function Dashboard({ deals, settings, watchItems, wanted, usage, 
   const alerts = useDealAlerts();
   const [lastBackup, setLastBackup] = useState(null);
   useEffect(() => setLastBackup(lastBackupAt()), []);
+  // When the scheduled jobs last ran, to show whether they're set up
+  const [runs, setRuns] = useState(null);
+  useEffect(() => {
+    fetch("/api/status")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setRuns(data?.runs ?? null))
+      .catch(() => {});
+  }, []);
 
   const summary = useMemo(() => summarise(deals, settings), [deals, settings]);
   const months = useMemo(() => monthlyProfit(deals, settings), [deals, settings]);
   const tax = useMemo(() => taxYearSummary(deals, settings), [deals, settings]);
   const reminders = useMemo(() => stockReminders(deals, settings), [deals, settings]);
   const movers = useMemo(() => priceMovers(models, 3), [models]);
-  const steps = setupSteps({ sync, alerts: alerts.status, lastBackup });
+  const steps = setupSteps({ sync, alerts: alerts.status, lastBackup, runs, now });
   const stepsLeft = steps.filter((step) => !step.done);
 
   const live = watchItems.filter((item) => !item.ended);
@@ -52,7 +60,12 @@ export default function Dashboard({ deals, settings, watchItems, wanted, usage, 
                 >
                   {step.done ? "✓" : ""}
                 </span>
-                <span className={step.done ? "text-zinc-500 line-through" : "text-zinc-200"}>{step.label}</span>
+                <span className={step.done ? "text-zinc-500 line-through" : "text-zinc-200"}>
+                  {step.label}
+                  {step.last !== undefined && (
+                    <span className="text-zinc-500"> · {step.last ? `last ran ${ranAgo(step.last, now)}` : "hasn't run yet"}</span>
+                  )}
+                </span>
                 <span className="sr-only">{step.done ? "done" : "not done"}</span>
               </li>
             ))}
@@ -289,4 +302,13 @@ function ProfitBars({ months }) {
       </table>
     </div>
   );
+}
+
+// "3 hours ago", for when a scheduled job last ran
+function ranAgo(at, now) {
+  const minutes = Math.max(Math.round((now - at) / 60_000), 0);
+  if (minutes < 60) return minutes <= 1 ? "just now" : `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+  return `${Math.round(hours / 24)} days ago`;
 }
