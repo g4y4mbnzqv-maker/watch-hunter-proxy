@@ -57,3 +57,33 @@ describe("ladies' and vintage watches", () => {
     );
   });
 });
+
+describe("reference with too few listings", () => {
+  beforeAll(() => {
+    process.env.EBAY_CLIENT_ID = "id";
+    process.env.EBAY_CLIENT_SECRET = "secret";
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("falls back to the model name in the title", async () => {
+    const queries = [];
+    vi.stubGlobal("fetch", async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes("oauth2")) return Response.json({ access_token: "t", expires_in: 7200 });
+      if (url.pathname.includes("taxonomy")) return new Response("no", { status: 404 });
+      const q = url.searchParams.get("q");
+      queries.push(q);
+      const summaries = q.includes("FAA02004B9") ? [] : [120, 130, 140, 150].map((p) => ({ title: "Orient Ray II automatic diver", price: { value: String(p) } }));
+      return Response.json({ itemSummaries: summaries.map((i) => ({ ...i, itemLocation: { country: "GB" } })) });
+    });
+    const item = { itemId: "r", title: "Orient Ray II - FAA02004B9", modelRef: "FAA02004B9", conditionGroup: "USED" };
+    const comps = await getComparables("Orient", [item]);
+    expect(comps.r).toMatchObject({ median: 135, matchedBy: "name" });
+    expect(queries.some((q) => q === "Orient Ray")).toBe(true);
+  });
+
+  it("ignores a seller's PWS stock codes", async () => {
+    const { extractModelRef } = await import("@/lib/models");
+    expect(extractModelRef("Seiko Ladies Gold Tone Quartz Dress Watch PWS1936")).toBeNull();
+  });
+});

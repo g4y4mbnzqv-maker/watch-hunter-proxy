@@ -23,4 +23,12 @@ describe("extractModelName", () => {
   ])("leaves %j alone", (title) => {
     expect(extractModelName(title)).toBeNull();
   });
+
+  it("knows broad families, after the specific names", () => {
+    expect(extractModelName("Omega Seamaster Quartz Watch")).toBe("Omega Seamaster");
+    expect(extractModelName("Omega Seamaster 300 Master Co-Axial")).toBe("Omega Seamaster 300");
+    expect(extractModelName("Omega Speedmaster Professional Moonwatch")).toBe("Omega Moonwatch");
+    expect(extractModelName("Hamilton Khaki Navy Scuba")).toBe("Hamilton Khaki Navy");
+    expect(extractModelName("Tissot PRC 200 Chronograph")).toBe("Tissot PRC 200");
+  });
 });
