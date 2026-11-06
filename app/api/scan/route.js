@@ -1,6 +1,7 @@
 import { searchListings, getComparables, EbayError } from "@/lib/ebay";
 import { recordScanQuietly } from "@/lib/harvest";
 import { isGem } from "@/lib/gems";
+import { withAuctionResults } from "@/lib/priceIndex";
 
 const LISTING_TYPES = ["AUCTION", "BUY_IT_NOW"];
 
@@ -56,10 +57,14 @@ export async function GET(req) {
       },
     });
 
-    const results = listings.map((item) => ({
-      ...item,
-      comps: comps[item.itemId] ?? null,
-    }));
+    // Recent auction results for the same models, where the price index
+    // has enough of them
+    const results = await withAuctionResults(
+      listings.map((item) => ({
+        ...item,
+        comps: comps[item.itemId] ?? null,
+      }))
+    );
 
     // Adds this scan's prices to the price index, when there is a database
     await recordScanQuietly(results, { brand });

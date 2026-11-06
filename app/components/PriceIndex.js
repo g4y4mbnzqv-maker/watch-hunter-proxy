@@ -36,7 +36,7 @@ export default function PriceIndex() {
       .then(({ res, data }) => {
         if (cancelled) return;
         if (!res.ok || data.error) setState({ error: data.message || `Couldn't load prices (${res.status})` });
-        else setState({ enabled: data.enabled, models: data.models });
+        else setState({ enabled: data.enabled, models: data.models, timing: data.timing });
       })
       .catch((err) => !cancelled && setState({ error: err.message }));
     return () => {
@@ -78,6 +78,8 @@ export default function PriceIndex() {
           bids from the last hour before they close.
         </p>
       </div>
+
+      <SellTiming timing={state.timing} />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
@@ -333,4 +335,44 @@ function median(values) {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+// When auctions end with the best prices, from recorded results
+function SellTiming({ timing }) {
+  if (!timing) return null;
+  if (!timing.ready) {
+    return (
+      <p className="mb-4 rounded-2xl bg-zinc-900/60 p-4 text-xs text-zinc-400 ring-1 ring-white/5">
+        <span className="font-medium text-zinc-200">Best time to sell:</span> {timing.count} auction results with end times
+        so far. Once there are 30, this shows which days and times end with the best prices, so you can time your own
+        listings.
+      </p>
+    );
+  }
+  const rows = (list) =>
+    list.map((row) => (
+      <li key={row.key} className="flex justify-between gap-3">
+        <span className="text-zinc-300">{row.label}</span>
+        <span className="tabular-nums text-zinc-400">
+          {row.percent === null ? `${row.count} results, too few` : `${row.percent > 0 ? "+" : ""}${row.percent}% (${row.count})`}
+        </span>
+      </li>
+    ));
+  const { day, time } = timing.best;
+  return (
+    <section className="mb-4 rounded-2xl bg-zinc-900/60 p-4 ring-1 ring-white/5">
+      <h2 className="text-sm font-medium text-zinc-200">Best time for an auction to end</h2>
+      <p className="mt-1 text-xs text-zinc-400">
+        {day && time
+          ? `${day.label} ${time.label.split(" (")[0].toLowerCase()} looks best so far. `
+          : ""}
+        Each result is compared with the usual price for the same model, across {timing.count} auction results from the last
+        90 days. A guide, not a promise.
+      </p>
+      <div className="mt-3 grid gap-4 text-xs sm:grid-cols-2">
+        <ul className="space-y-1">{rows(timing.days)}</ul>
+        <ul className="space-y-1">{rows(timing.times)}</ul>
+      </div>
+    </section>
+  );
 }

@@ -11,7 +11,7 @@ export const SNAPSHOT_FIELDS = [
   "itemId", "title", "url", "image", "condition", "modelRef", "currentBid",
   "postage", "totalCost", "bidCount", "endTime", "seller", "comps", "brand",
   "conditionId", "images", "listingType", "bestOffer", "modelName", "misspelt",
-  "authenticityGuarantee",
+  "authenticityGuarantee", "sold",
 ];
 
 export const SORTERS = {

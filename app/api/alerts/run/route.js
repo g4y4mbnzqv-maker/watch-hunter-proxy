@@ -20,6 +20,7 @@ export async function GET(req) {
 
   // Noted before the check, so quiet hours still count as the schedule working
   await noteRun("alerts");
-  const report = await runAlerts({ origin: new URL(req.url).origin });
+  const url = new URL(req.url);
+  const report = await runAlerts({ origin: url.origin, quick: url.searchParams.get("quick") === "1" });
   return Response.json({ ok: true, report });
 }

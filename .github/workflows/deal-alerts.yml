@@ -7,9 +7,12 @@ name: Deal alerts
 
 on:
   schedule:
-    # Every hour at 23 minutes past, 06:00 to 22:00 UTC; the app skips
-    # anything outside 7am to 11pm UK time
-    - cron: "23 6-22 * * *"
+    # Every 20 minutes, 06:00 to 22:59 UTC; the app skips anything outside
+    # 7am to 11pm UK time. The run near 23 past is the full check; the
+    # others only look at the newest Buy It Now listings, so a cheap one is
+    # seen within about 20 minutes. About 1,500 Actions minutes a month,
+    # inside the free 2,000 for a private repository.
+    - cron: "3,23,43 6-22 * * *"
   workflow_dispatch:
 
 jobs:
@@ -26,6 +29,10 @@ jobs:
             echo "Add the APP_URL and CRON_SECRET repository secrets to turn on deal alerts."
             exit 0
           fi
+          # GitHub often starts scheduled runs late, so the full check is
+          # any run that starts between 20 and 39 minutes past
+          minute=$((10#$(date -u +%M)))
+          if [ "$minute" -ge 20 ] && [ "$minute" -lt 40 ]; then mode=""; else mode="?quick=1"; fi
           curl --fail-with-body --silent --show-error --max-time 90 \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$APP_URL/api/alerts/run"
+            "$APP_URL/api/alerts/run$mode"
