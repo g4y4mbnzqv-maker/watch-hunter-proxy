@@ -112,8 +112,8 @@ const ALERT_TEXT = {
   "install-first": "On iPhone, add Watch Hunter to your home screen first (Share, then Add to Home Screen), then open it from there.",
   unavailable: "Alerts need a database and APP_PASSCODE set in Vercel, like syncing.",
   blocked: "Notifications are blocked for this site. Allow them in your browser or phone settings, then come back.",
-  off: "Get a notification when a new Buy It Now deal turns up in your Top deals brands, even with the app closed.",
-  on: "On for this device. New Buy It Now deals in your Top deals brands are checked about once an hour, 7am to 11pm.",
+  off: "Get a notification when a new Buy It Now deal turns up in your Top deals brands, or a saved Buy It Now watch drops in price, even with the app closed. Plus a summary of your week on Sunday evenings.",
+  on: "On for this device. New Buy It Now deals in your Top deals brands and price drops on saved Buy It Now watches are checked about once an hour, 7am to 11pm, with a summary of your week on Sunday evenings.",
 };
 
 function DealAlerts() {

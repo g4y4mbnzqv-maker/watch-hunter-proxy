@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import AppHeader from "./components/AppHeader";
 import SearchPanel from "./components/SearchPanel";
+import ListingCheck from "./components/ListingCheck";
 import Results from "./components/Results";
 import Watchlist from "./components/Watchlist";
 import PriceIndex from "./components/PriceIndex";
@@ -26,6 +27,7 @@ import { GEM_QUERIES } from "@/lib/gems";
 import { HIDDEN_GEMS } from "./client/useScanner";
 import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
+import { formatGbp } from "./components/format";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
 import { GRADES } from "@/lib/condition";
@@ -188,21 +190,27 @@ export default function Home() {
   );
   const live = useMemo(() => analysed.filter((item) => isLive(item, now)), [analysed, now]);
 
-  const { shown, hidden } = useMemo(() => {
+  const { shown, hidden, hiddenItems } = useMemo(() => {
     const isRisky = (item) => hideRisky && item.sellerCheck.level === "risky";
     const overBudget = (item) => settings.maxBudget > 0 && item.totalCost > settings.maxBudget;
     const counts = { risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0 };
     const kept = [];
+    // Hidden listings with the reason, for "Show hidden"
+    const held = [];
+    const hide = (item, key, reason) => {
+      counts[key]++;
+      held.push({ ...item, hiddenReason: reason });
+    };
 
     // Each hidden listing is counted once, under the first reason that applies
     for (const item of live) {
-      if (isRisky(item)) counts.risky++;
-      else if (overBudget(item)) counts.overBudget++;
-      else if (!grades.includes(item.conditionCheck.grade)) counts.otherCondition++;
-      else if (guaranteedOnly && !item.authenticityGuarantee) counts.notGuaranteed++;
+      if (isRisky(item)) hide(item, "risky", "from a risky seller");
+      else if (overBudget(item)) hide(item, "overBudget", `over your ${formatGbp(settings.maxBudget)} limit`);
+      else if (!grades.includes(item.conditionCheck.grade)) hide(item, "otherCondition", "in a condition you've filtered out");
+      else if (guaranteedOnly && !item.authenticityGuarantee) hide(item, "notGuaranteed", "without Authenticity Guarantee");
       else kept.push(item);
     }
-    return { shown: kept, hidden: counts };
+    return { shown: kept, hidden: counts, hiddenItems: held };
   }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly]);
 
   const { watchlist } = watch;
@@ -320,6 +328,8 @@ export default function Home() {
             onGradesChange={setGrades}
           />
 
+          {!scanner.loading && <ListingCheck settings={settings} />}
+
           {scanner.error && <Notice tone="rose">{scanner.error}</Notice>}
 
           {scanner.scannedBrand === HIDDEN_GEMS && !scanner.loading && (
@@ -369,6 +379,7 @@ export default function Home() {
               scanId={scanId}
               shown={shown}
               hidden={hidden}
+              hiddenItems={hiddenItems}
               minProfit={settings.minProfit}
               maxBudget={settings.maxBudget}
               view={view}

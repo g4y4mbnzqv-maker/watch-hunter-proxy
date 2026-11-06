@@ -69,6 +69,8 @@ The **Home** tab (`app/components/Dashboard.js`, `lib/dashboard.js`) brings the 
 - Tap a card's photo to open every photo in the listing full screen, with arrows, swiping, thumbnails and Esc to close.
 - Each scan also searches for common misspellings of the brand ("Sieko", "Omgea", "Rollex" and so on, listed in `lib/overlooked.js`), as one extra eBay search per listing type. Fewer buyers find misspelt listings, so they often go cheap. eBay sometimes corrects the search, so only listings whose title really has a misspelling are added.
 - Studio Underdog spells its name and models with a zero ("Studio Underd0g", "Watermel0n"), and many sellers copy it, so its searches look for both spellings, and its models (Watermelon, Desert Sky, Mint Choc Chip, Goofy Panda, Pink Lemonade, Avocado, Guacamole, Pepperoni, Hawaiian) are recognised either way for resale estimates (`searchQuery` in `lib/brands.js`).
+- **Show hidden:** when filters hide listings (risky sellers, over your Maximum spend, other conditions, no Authenticity Guarantee), a link under the figures shows them as well, each labelled with why it's normally hidden.
+- **Check a watch from another site** (under the search box): type the title and the total you'd pay on Vinted, Facebook, Gumtree or anywhere else. The app values it against today's eBay asking prices with the same profit sums, too-cheap check and often-faked warning as a scan. Nothing is read from the other site.
 - "Overlooked" shows listings fewer buyers may spot: a misspelt brand, an auction ending between midnight and 7am UK time, one photo or none, or a title under 30 characters. The card says which.
 - "Check prices" links on each live card open eBay's sold listings, Chrono24 and Vinted searches for the model reference (or the main words of the title) in a new tab. Nothing is fetched from those sites; use what you find to set your own resale value.
 - On any card you can type your own resale value. On a card with a model reference, the value is saved for that model and used for every listing of it from then on; without a reference, it applies to that listing only. Your values override the estimate. Your settings, resale values and watchlist are saved in your browser, and synced to your other devices when syncing is on (see below).
@@ -106,6 +108,10 @@ The Sales tab records watches you buy and sell.
 ## Deal alerts while the app is closed
 
 Settings, then Deal alerts, signs a phone or computer up for push notifications. About once an hour from 7am to 11pm UK time, `/api/alerts/run` checks the newest Buy It Now listings for your Top deals brands, works out profit with your synced settings and resale values, and notifies you of each new deal: a confident "Deal" (not "Check value" or "Too cheap to trust"), within your Maximum spend, from a seller who isn't risky. Up to 5 alerts per run, with a summary for more. The first check of each brand only notes what's already listed, so you aren't sent old listings.
+
+The same check also:
+- **Price drops:** looks up the 20 most recently saved Buy It Now watches on your watchlist and notifies you when one is at least £5 or 5% cheaper (whichever is more) than when last checked, or than when you saved it. That's one eBay call per watch per run (`lib/digest.js`).
+- **Sunday summary:** on the first check from 6pm on Sundays, sends the week in one notification: sales and profit, buys, stock still unsold, and the best deal the alert checks found that week.
 
 Setup:
 1. Alerts need the database and `APP_PASSCODE`, like syncing. The push keys are made automatically and kept in the database.

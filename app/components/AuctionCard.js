@@ -67,6 +67,11 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
         ended ? "opacity-60 ring-white/5" : style.glow
       }`}
     >
+      {item.hiddenReason && (
+        <p className="bg-amber-950/60 px-4 py-2 text-xs text-amber-200 ring-1 ring-inset ring-amber-500/30">
+          Normally hidden: {item.hiddenReason}
+        </p>
+      )}
       <div className="relative aspect-[16/11] overflow-hidden bg-zinc-800">
         {images.length ? (
           <button
