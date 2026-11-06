@@ -59,3 +59,16 @@ describe("scanning Studio Underdog", () => {
     expect(items[0]).toMatchObject({ modelName: "Studio Underdog Watermelon" });
   });
 });
+
+describe("Studio Underdog titles", () => {
+  it("don't treat the movement or the series as the model", async () => {
+    const { extractModelRef } = await import("@/lib/models");
+    expect(extractModelRef("Studio Underd0g Goofy Panda Biompax ST-1901 Auto Chronograph")).toBeNull();
+    expect(extractModelRef("Studio Underd0g 02Series Pink Lem0nade Watch")).toBeNull();
+    expect(extractModelRef("Studio Underd0g Gen2 Watermelon Watch ST1901 Movement")).toBeNull();
+    expect(extractModelName("Studio Underd0g 02Series Pink Lem0nade Watch")).toBe("Studio Underdog Pink Lemonade");
+    expect(extractModelRef("Studio Underd0g Desert Sky ST-1901 (Gen 3) Chronograph 38.5mm")).toBeNull();
+    // Ordinary references still count
+    expect(extractModelRef("Seiko SKX007 diver")).toBe("SKX007");
+  });
+});
