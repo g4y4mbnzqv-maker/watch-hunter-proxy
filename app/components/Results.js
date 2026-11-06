@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import CardGrid from "./CardGrid";
 import SwipeDeck from "./SwipeDeck";
 import { EmptyState, Stat } from "./Placeholders";
@@ -38,8 +38,9 @@ const IN_VIEW = {
 // Stats, view tabs, sort and the cards for one scan
 export default function Results({
   scanId,
-  shown,
+  shown: kept,
   hidden,
+  hiddenItems = [],
   minProfit,
   maxBudget,
   view,
@@ -53,14 +54,18 @@ export default function Results({
   onToggleSave,
   onSetResale,
 }) {
+  // "Show hidden" adds the filtered-out listings back, each labelled with why
+  const [showHidden, setShowHidden] = useState(false);
+  const shown = useMemo(() => (showHidden ? [...kept, ...hiddenItems] : kept), [showHidden, kept, hiddenItems]);
+
   const stats = useMemo(() => {
-    const priced = shown.filter((item) => item.profit !== null);
+    const priced = kept.filter((item) => item.profit !== null);
     // Rough estimates can't headline the best profit
     const best = priced
       .filter((item) => item.status !== "check")
       .reduce((top, item) => (top === null || item.profit > top.profit ? item : top), null);
     return { priced: priced.length, best: best?.profit ?? null };
-  }, [shown]);
+  }, [kept]);
 
   const counts = useMemo(
     () => Object.fromEntries(VIEWS.map(({ key }) => [key, shown.filter((item) => IN_VIEW[key](item, now)).length])),
@@ -77,7 +82,7 @@ export default function Results({
       <section className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat
           label="Listings found"
-          value={shown.length}
+          value={kept.length}
           note={hiddenNote([
             hidden.risky > 0 && `${hidden.risky} from risky sellers`,
             hidden.overBudget > 0 && `${hidden.overBudget} over your ${formatGbp(maxBudget)} limit`,
@@ -89,6 +94,21 @@ export default function Results({
         <Stat label={`Clearing ${formatGbp(minProfit)}`} value={counts.deals} accent={counts.deals > 0} />
         <Stat label="Best profit" value={formatGbp(stats.best)} accent={stats.best !== null && stats.best > 0} />
       </section>
+
+      {hiddenItems.length > 0 && (
+        <div className="-mt-3 mb-5">
+          <button
+            type="button"
+            onClick={() => setShowHidden((current) => !current)}
+            aria-pressed={showHidden}
+            className="text-xs font-medium text-emerald-300 hover:text-emerald-200"
+          >
+            {showHidden
+              ? `Hide the ${hiddenItems.length} filtered out again`
+              : `Show the ${hiddenItems.length} hidden ${hiddenItems.length === 1 ? "listing" : "listings"}, with why`}
+          </button>
+        </div>
+      )}
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="-mx-1 flex max-w-full gap-1 overflow-x-auto px-1">
