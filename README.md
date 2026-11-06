@@ -6,7 +6,7 @@ Scans eBay UK auctions and Buy It Now listings for a watch brand and shows which
 
 1. Create a Production keyset at https://developer.ebay.com/my/keys.
 2. Copy `.env.example` to `.env.local` and fill in `EBAY_CLIENT_ID` (App ID) and `EBAY_CLIENT_SECRET` (Cert ID). On Vercel, add the same two variables under Project Settings > Environment Variables.
-3. Optional: set `APP_PASSCODE` to lock the app. Visitors then need the passcode before they can see anything or call the API, and a browser stays unlocked for 90 days. Changing the passcode signs everyone out. Leave it unset to keep the app open. Scripts can call the API with the header `Authorization: Bearer <passcode>` instead of the cookie.
+3. Optional: set `APP_PASSCODE` to lock the app. Visitors then need the passcode before they can see anything or call the API, and a browser stays unlocked for 90 days. Changing the passcode signs everyone out. Leave it unset to keep the app open.
 4. Optional, for the price index: in Vercel, open Storage, choose Create Database, pick Neon (free) and connect it to this project, which sets `DATABASE_URL`. Then add `CRON_SECRET` (any long random string) under Environment Variables and redeploy. Without a database the Prices tab shows these steps and nothing is recorded.
 5. Install and run:
 

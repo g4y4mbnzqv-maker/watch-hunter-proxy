@@ -12,11 +12,6 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  // Scripts and test tools can send the passcode itself instead of the cookie
-  if (req.nextUrl.pathname.startsWith("/api/") && req.headers.get("authorization") === `Bearer ${passcode}`) {
-    return NextResponse.next();
-  }
-
   if (req.nextUrl.pathname.startsWith("/api/")) {
     return Response.json(
       { error: true, message: "Locked. Reload the page and enter your passcode." },
