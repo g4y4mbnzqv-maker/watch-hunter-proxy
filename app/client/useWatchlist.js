@@ -77,10 +77,10 @@ export function useWatchlist({ settings, resaleOverride, now, onLimitHit, onRefr
         const next = { ...current };
         for (const item of data.items) {
           if (!next[item.itemId]) continue;
-          // Keep the resale comparables from when it was saved
+          // Keep the resale comparables and auction results from when it was saved
           next[item.itemId] = {
             ...next[item.itemId],
-            ...pick(item, SNAPSHOT_FIELDS.filter((field) => field !== "comps")),
+            ...pick(item, SNAPSHOT_FIELDS.filter((field) => field !== "comps" && field !== "sold")),
           };
         }
         for (const itemId of data.missing) {

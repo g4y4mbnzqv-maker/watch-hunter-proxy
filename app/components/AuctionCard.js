@@ -194,6 +194,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
         {!ended && item.vintedProfit !== undefined && item.profit !== null && item.status !== "check" && (
           <VintedLine item={item} />
         )}
+        {item.resaleSource === "sold" && <SoldNote sold={item.sold} />}
         {item.comps && <PriceRange comps={item.comps} brandPercent={item.brandPercent} />}
         {item.trend && <TrendLine trend={item.trend} />}
 
@@ -362,6 +363,18 @@ function WordingNote({ title }) {
 function OverlookedNote({ reasons }) {
   const text = reasons.length > 1 ? `${reasons.slice(0, -1).join(", ")} and ${reasons.at(-1)}` : reasons[0];
   return <Note tone="sky">Fewer buyers may spot this: {text}.</Note>;
+}
+
+// Real auction results behind the estimate, from the price index
+function SoldNote({ sold }) {
+  const condition = CONDITION_NAMES[sold.condition];
+  return (
+    <p className="-mt-1 text-[11px] leading-relaxed text-emerald-200/80">
+      Sold for about <span className="tabular-nums text-zinc-100">{formatGbp(sold.median)}</span> in {sold.count} recent{" "}
+      {condition ? `${condition} ` : ""}auctions ({formatGbp(sold.low)} to {formatGbp(sold.high)}). These are bids seen in the last
+      hour, so the final prices were often a little higher.
+    </p>
+  );
 }
 
 // Spread of the Buy It Now prices behind the estimate
@@ -725,6 +738,7 @@ const CONDITION_NAMES = { NEW: "new", USED: "pre-owned" };
 function resaleHint(item) {
   if (item.resaleSource === "listing") return "your value";
   if (item.resaleSource === "model") return `your ${modelKey(item)} value`;
+  if (item.resaleSource === "sold") return `${item.sold.count} auction results`;
   if (!item.comps) return "no estimate";
 
   const condition = CONDITION_NAMES[item.comps.condition];
