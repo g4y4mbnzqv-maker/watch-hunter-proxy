@@ -620,10 +620,20 @@ function BidHeadroom({ item }) {
   );
 }
 
+// An offer this far below the asking price gets a note that it may be refused
+const BIG_ASK_PERCENT = 25;
+
 // For Buy It Now, the limit is the most to pay before postage; only useful
 // when the price is above it and the seller takes offers
 function OfferLimit({ item }) {
   if (item.currentBid <= item.maxBid) return null;
+  if (item.bestOffer && !item.budgetCapped && item.maxBid <= 0) {
+    return <p className="text-xs text-zinc-400">No offer price would clear your target profit on this one.</p>;
+  }
+  // How far under the asking price the offer is; sellers often turn down
+  // offers far below it
+  const below = item.currentBid > 0 ? Math.round((1 - item.maxBid / item.currentBid) * 100) : 0;
+  const bigAsk = item.bestOffer && below >= BIG_ASK_PERCENT;
   return (
     <p className="text-xs text-zinc-400">
       {item.budgetCapped ? (
@@ -639,6 +649,7 @@ function OfferLimit({ item }) {
         <>
           Offer up to <span className="font-semibold text-zinc-50">{formatGbp(item.maxBid)}</span>{" "}
           to clear your target profit.
+          {bigAsk && <span className="text-zinc-500"> That's {below}% under the asking price, which many sellers turn down.</span>}
         </>
       ) : (
         <>
