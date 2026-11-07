@@ -5,6 +5,7 @@ import BrandPicker from "./BrandPicker";
 import { GEM_MAX_PRICE } from "@/lib/gems";
 import ConditionFilter from "./ConditionFilter";
 import ListingTypeFilter from "./ListingTypeFilter";
+import { GRADES } from "@/lib/condition";
 
 const GOOD_OR_BETTER = ["new", "excellent", "good"];
 
@@ -98,7 +99,13 @@ export default function SearchPanel({
         </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/5 pt-4">
+      <details className="group mt-4 border-t border-white/5 pt-3 [&_summary::-webkit-details-marker]:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs">
+          <span className="font-medium text-zinc-300">Filters</span>
+          <span className="truncate text-zinc-500">{filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly })}</span>
+          <span aria-hidden="true" className="text-zinc-500 transition group-open:rotate-180">▾</span>
+        </summary>
+      <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
         <span className="flex items-center gap-1.5 text-xs text-zinc-400">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           Watches located in the UK
@@ -119,8 +126,22 @@ export default function SearchPanel({
       </div>
 
       <ConditionFilter selected={grades} onChange={onGradesChange} goodOrBetter={GOOD_OR_BETTER} />
+      </details>
     </section>
   );
+}
+
+// The filters in one line, so they can stay folded away
+export function filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly }) {
+  const types =
+    listingTypes.length > 1 ? "Auctions and Buy It Now" : listingTypes[0] === "AUCTION" ? "Auctions only" : "Buy It Now only";
+  const conditions = grades.length >= GRADES.length ? "any condition" : `${grades.length} of ${GRADES.length} conditions`;
+  const extras = [
+    includeJunk && "parts included",
+    !hideRisky && "risky sellers shown",
+    guaranteedOnly && "Authenticity Guarantee only",
+  ].filter(Boolean);
+  return [types, conditions, ...extras].join(", ");
 }
 
 function Checkbox({ checked, onChange, children }) {

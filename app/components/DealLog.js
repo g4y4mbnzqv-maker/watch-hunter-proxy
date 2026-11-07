@@ -76,10 +76,6 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
         <Stat label="Days to sell" value={summary.medianDays ?? "–"} note={summary.medianDays !== null ? "median" : null} />
       </div>
 
-      <ReviewPanel review={review} />
-
-      <TaxPanel deals={deals} settings={settings} />
-
       {reminders.length > 0 && (
         <Reminders
           reminders={reminders}
@@ -87,10 +83,6 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
           onDrop={(id, price) => updateDeal(id, { listedAt: price, listedOn: today() })}
         />
       )}
-
-      <StockValue deals={deals} settings={settings} />
-
-      <RatioPanel ratio={ratio} settings={settings} onSettingsChange={onSettingsChange} />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-sm font-medium text-zinc-300">
@@ -130,6 +122,17 @@ export default function DealLog({ dealBook, settings, onSettingsChange, openId, 
           />
         ))}
       </ul>
+
+      <div className="mt-6">
+      <ReviewPanel review={review} />
+
+      <TaxPanel deals={deals} settings={settings} />
+
+
+      <StockValue deals={deals} settings={settings} />
+
+      {summary.sold > 0 && <RatioPanel ratio={ratio} settings={settings} onSettingsChange={onSettingsChange} />}
+      </div>
 
       <p className="mt-6 text-xs text-zinc-500">
         Your sales log is saved in this browser, and synced to your other devices when syncing is on. Download the
