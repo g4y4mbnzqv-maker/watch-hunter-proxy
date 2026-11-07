@@ -29,6 +29,7 @@ import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
 import { formatGbp } from "./components/format";
 import { sellerMark, withSellerMark } from "@/lib/sellerNotes";
+import { buildTaste } from "@/lib/forYou";
 import { SellerNotesContext } from "./client/sellerNotes";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
@@ -187,6 +188,14 @@ export default function Home() {
     },
   });
 
+  // The welcome heading and how-it-works cards are for your first visits
+  // only; once you've scanned, Find opens straight on the search box
+  const [hasScanned, setHasScanned] = useStoredState("wh-has-scanned", false);
+  useEffect(() => {
+    if (scanner.scannedBrand && !hasScanned) setHasScanned(true);
+  }, [scanner.scannedBrand, hasScanned, setHasScanned]);
+
+
   const watch = useWatchlist({
     settings,
     resaleOverride,
@@ -238,6 +247,8 @@ export default function Home() {
   }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly, sellerNotes]);
 
   const { watchlist } = watch;
+  // What you go for, from your saves and buys, for the "For you" sort
+  const taste = useMemo(() => buildTaste({ watchlist, deals: dealBook.deals }), [watchlist, dealBook.deals]);
   const watchItems = useMemo(() => withTrends(watch.items, trends), [watch.items, trends]);
   const isSaved = useCallback((itemId) => Boolean(watchlist[itemId]), [watchlist]);
 
@@ -331,7 +342,7 @@ export default function Home() {
 
       {mode === "scan" && (
         <>
-          {!scanner.scannedBrand && !scanner.loading && <Hero />}
+          {!hasScanned && !scanner.scannedBrand && !scanner.loading && <Hero />}
 
           <SearchPanel
             scannedBrand={scanner.scannedBrand}
@@ -407,6 +418,7 @@ export default function Home() {
               shown={shown}
               hidden={hidden}
               hiddenItems={hiddenItems}
+              taste={taste}
               minProfit={settings.minProfit}
               maxBudget={settings.maxBudget}
               view={view}
@@ -422,7 +434,7 @@ export default function Home() {
             />
           )}
 
-          {!scanner.loading && !scanner.scannedBrand && !scanner.error && <Intro />}
+          {!hasScanned && !scanner.loading && !scanner.scannedBrand && !scanner.error && <Intro />}
         </>
       )}
     </main>

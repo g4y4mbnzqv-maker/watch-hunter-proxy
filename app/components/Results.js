@@ -6,6 +6,7 @@ import SwipeDeck from "./SwipeDeck";
 import { EmptyState, Stat } from "./Placeholders";
 import { formatGbp } from "./format";
 import { SORTERS, endsWithin, hiddenNote } from "../client/listings";
+import { MIN_PICKS, scoreFor } from "@/lib/forYou";
 
 const VIEWS = [
   { key: "deals", label: "Deals" },
@@ -20,6 +21,7 @@ const SORTS = [
   { key: "profit", label: "Highest profit" },
   { key: "headroom", label: "Most headroom" },
   { key: "roi", label: "Best return" },
+  { key: "forYou", label: "For you" },
 ];
 
 const LAYOUTS = [
@@ -41,6 +43,7 @@ export default function Results({
   shown: kept,
   hidden,
   hiddenItems = [],
+  taste,
   minProfit,
   maxBudget,
   view,
@@ -73,8 +76,14 @@ export default function Results({
   );
 
   const visible = useMemo(
-    () => shown.filter((item) => IN_VIEW[view](item, now)).sort(SORTERS[sort]),
-    [shown, view, sort, now]
+    () => {
+      const inView = shown.filter((item) => IN_VIEW[view](item, now));
+      if (sort !== "forYou" || !(taste?.count >= MIN_PICKS)) return inView.sort(SORTERS[sort === "forYou" ? "profit" : sort]);
+      // Most like your picks first; profit breaks ties
+      const scores = new Map(inView.map((item) => [item.itemId, scoreFor(item, taste)]));
+      return inView.sort((a, b) => scores.get(b.itemId) - scores.get(a.itemId) || SORTERS.profit(a, b));
+    },
+    [shown, view, sort, now, taste]
   );
 
   return (
@@ -158,6 +167,14 @@ export default function Results({
           </select>
         </div>
       </div>
+
+      {sort === "forYou" && (
+        <p className="-mt-2 mb-4 text-xs text-zinc-500">
+          {taste?.count >= MIN_PICKS
+            ? `Ranked by the brands, prices and models you save and buy (${taste.count} picks${taste.price ? `, usually around ${formatGbp(taste.price)}` : ""}).`
+            : `Save or log ${MIN_PICKS - (taste?.count ?? 0)} more ${MIN_PICKS - (taste?.count ?? 0) === 1 ? "watch" : "watches"} and this ranks listings by what you go for. Until then it sorts by profit.`}
+        </p>
+      )}
 
       {layout === "swipe" && visible.length > 0 ? (
         <SwipeDeck

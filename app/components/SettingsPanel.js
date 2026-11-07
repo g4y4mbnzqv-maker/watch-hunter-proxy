@@ -57,6 +57,11 @@ const FIELDS = [
   },
 ];
 
+// Settings grouped under headings, so the panel reads in sections
+const BUYING_KEYS = ["minProfit", "maxBudget", "monthlyGoal"];
+const BUYING_FIELDS = FIELDS.filter((field) => BUYING_KEYS.includes(field.key));
+const SELLING_FIELDS = FIELDS.filter((field) => !BUYING_KEYS.includes(field.key));
+
 const SELLER_FIELDS = [
   {
     key: "sellerMinFeedback",
@@ -85,11 +90,13 @@ export default function SettingsPanel({ settings, onChange }) {
         </button>
       </div>
 
-      <FieldGrid fields={FIELDS} settings={settings} onChange={onChange} />
+      <h3 className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-400">Buying</h3>
+      <FieldGrid fields={BUYING_FIELDS} settings={settings} onChange={onChange} />
 
-      <h3 className="mb-4 mt-6 text-sm font-medium text-zinc-100">
-        Seller checks
-      </h3>
+      <h3 className="mb-4 mt-6 text-xs font-semibold uppercase tracking-widest text-zinc-400">Selling</h3>
+      <FieldGrid fields={SELLING_FIELDS} settings={settings} onChange={onChange} />
+
+      <h3 className="mb-4 mt-6 text-xs font-semibold uppercase tracking-widest text-zinc-400">Seller checks</h3>
       <FieldGrid fields={SELLER_FIELDS} settings={settings} onChange={onChange} />
 
       <DealAlerts />
