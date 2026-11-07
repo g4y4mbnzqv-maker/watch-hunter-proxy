@@ -7,6 +7,7 @@ import { modelKey } from "@/lib/models";
 import { cautionWords } from "@/lib/wording";
 import { gradeLabel } from "@/lib/condition";
 import { ebayImage } from "@/lib/images";
+import { readJson } from "../client/readJson";
 
 const STATUS_STYLES = {
   deal: {
@@ -220,6 +221,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
               <SnipePanel item={item} />
             )}
             <ResaleEditor item={item} onSetResale={onSetResale} />
+            {images.length > 0 && <SimilarByPhoto item={item} image={images[0]} />}
           </>
         )}
 
@@ -743,6 +745,55 @@ function resaleHint(item) {
 
   const condition = CONDITION_NAMES[item.comps.condition];
   return `${item.comps.count} ${condition ? `${condition} ` : ""}listings`;
+}
+
+// Listings that look like this one's main photo, for judging a watch the
+// title doesn't name. One eBay call, only when asked.
+function SimilarByPhoto({ item, image }) {
+  const [state, setState] = useState(null);
+
+  async function look() {
+    setState({ loading: true });
+    try {
+      const res = await fetch(`/api/similar?${new URLSearchParams({ image, exclude: item.itemId })}`);
+      const data = await readJson(res);
+      if (!res.ok || data.error) throw new Error(data.message || `Photo search failed (${res.status})`);
+      setState({ items: data.items });
+    } catch (err) {
+      setState({ error: err.message });
+    }
+  }
+
+  if (!state) {
+    return (
+      <button type="button" onClick={look} className="text-left text-xs text-sky-300 hover:text-sky-200">
+        Similar by photo
+      </button>
+    );
+  }
+  if (state.loading) return <p className="text-xs text-zinc-400">Looking for watches like this…</p>;
+  if (state.error) return <p className="text-xs text-rose-300">{state.error}</p>;
+  if (!state.items.length) return <p className="text-xs text-zinc-400">No similar UK listings found.</p>;
+
+  const prices = state.items.map((other) => other.totalCost).sort((a, b) => a - b);
+  return (
+    <div className="rounded-xl bg-black/30 p-3 text-xs ring-1 ring-white/10">
+      <p className="text-zinc-300">
+        Look alike, asking {formatGbp(prices[0])} to {formatGbp(prices[prices.length - 1])}. Similar isn't the same model: check
+        the dial and caseback match before relying on these.
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {state.items.map((other) => (
+          <li key={other.itemId} className="flex items-baseline justify-between gap-2">
+            <a href={other.url} target="_blank" rel="noopener noreferrer" className="min-w-0 truncate text-zinc-200 hover:text-white">
+              {other.title}
+            </a>
+            <span className="shrink-0 tabular-nums text-zinc-400">{formatGbp(other.totalCost)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function ResaleEditor({ item, onSetResale }) {
