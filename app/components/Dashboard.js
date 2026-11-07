@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { formatGbp, formatTimeLeft } from "./format";
-import { monthlyProfit, setupSteps } from "@/lib/dashboard";
+import { goalProgress, monthlyProfit, setupSteps } from "@/lib/dashboard";
 import { summarise } from "@/lib/dealLog";
 import { stockReminders } from "@/lib/stock";
 import { priceMovers } from "@/lib/review";
@@ -23,6 +23,14 @@ export default function Dashboard({ deals, settings, watchItems, wanted, usage, 
   const alerts = useDealAlerts();
   const [lastBackup, setLastBackup] = useState(null);
   useEffect(() => setLastBackup(lastBackupAt()), []);
+  // Deal alerts from the last week, kept so a missed notification isn't lost
+  const [inbox, setInbox] = useState([]);
+  useEffect(() => {
+    fetch("/api/alerts/inbox")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setInbox(data?.alerts ?? []))
+      .catch(() => {});
+  }, []);
   // When the scheduled jobs last ran, to show whether they're set up
   const [runs, setRuns] = useState(null);
   useEffect(() => {
@@ -91,6 +99,25 @@ export default function Dashboard({ deals, settings, watchItems, wanted, usage, 
         />
       </div>
 
+      <GoalCard progress={goalProgress(thisMonth.profit, settings.monthlyGoal, now)} profit={thisMonth.profit} goal={settings.monthlyGoal} onNavigate={onNavigate} />
+
+      {inbox.length > 0 && (
+        <Card title="Recent alerts">
+          <ul className="space-y-2 text-xs">
+            {inbox.slice(0, 8).map((alert) => (
+              <li key={alert.id}>
+                <a href={alert.url || "#"} target={alert.url?.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer" className="block hover:text-white">
+                  <span className="block truncate text-zinc-200">{alert.title}</span>
+                  <span className="block truncate text-zinc-500">
+                    {ranAgo(alert.at, now)} · {alert.body}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <Card title="Profit by month" action="Sales" onAction={() => onNavigate("deals")}>
         {deals.some((deal) => deal.soldFor) ? (
           <ProfitBars months={months} />
@@ -154,6 +181,42 @@ export default function Dashboard({ deals, settings, watchItems, wanted, usage, 
         {alerts.status === "on" ? "on" : "off"} for this device.
       </p>
     </section>
+  );
+}
+
+// This month's profit against your goal, or a nudge to set one
+function GoalCard({ progress, profit, goal, onNavigate }) {
+  if (!progress) {
+    return (
+      <button type="button" onClick={() => onNavigate("settings")} className="text-left text-xs text-emerald-300 hover:text-emerald-200">
+        Set a monthly profit goal →
+      </button>
+    );
+  }
+  return (
+    <Card title="Monthly goal" action="Sales" onAction={() => onNavigate("deals")}>
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="text-zinc-100">
+          <span className="font-semibold tabular-nums">{formatGbp(profit)}</span> of {formatGbp(goal)}
+        </span>
+        <span className="tabular-nums text-zinc-400">{progress.percent}%</span>
+      </div>
+      <div
+        className="mt-2 h-2 overflow-hidden rounded-full bg-white/5"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress.percent}
+        aria-label="Monthly goal"
+      >
+        <div className="h-full rounded-full bg-[#3987e5]" style={{ width: `${progress.percent}%` }} />
+      </div>
+      <p className="mt-2 text-xs text-zinc-400">
+        {progress.remaining
+          ? `${formatGbp(progress.remaining)} to go with ${progress.daysLeft} ${progress.daysLeft === 1 ? "day" : "days"} left, about ${formatGbp(progress.perDay)} a day.`
+          : "Goal reached this month."}
+      </p>
+    </Card>
   );
 }
 

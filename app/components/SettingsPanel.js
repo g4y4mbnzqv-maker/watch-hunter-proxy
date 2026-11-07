@@ -49,6 +49,12 @@ const FIELDS = [
     prefix: "£",
     help: "Battery, service, cleaning or a new strap.",
   },
+  {
+    key: "monthlyGoal",
+    label: "Monthly profit goal",
+    prefix: "£",
+    help: "The Home tab shows how far you are through it this month. 0 means no goal.",
+  },
 ];
 
 const SELLER_FIELDS = [

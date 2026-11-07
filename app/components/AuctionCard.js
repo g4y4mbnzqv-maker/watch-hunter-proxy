@@ -8,6 +8,8 @@ import { cautionWords } from "@/lib/wording";
 import { gradeLabel } from "@/lib/condition";
 import { ebayImage } from "@/lib/images";
 import { readJson } from "../client/readJson";
+import { useSellerNotes } from "../client/sellerNotes";
+import { sellerMark } from "@/lib/sellerNotes";
 
 const STATUS_STYLES = {
   deal: {
@@ -568,7 +570,38 @@ function RoughNote({ reasons }) {
   );
 }
 
-function SellerLine({ seller, check }) {
+// Your mark on the seller, with buttons to change it
+function SellerMarks({ seller }) {
+  const { notes, setMark } = useSellerNotes();
+  if (!seller?.username) return null;
+  const mark = sellerMark(notes, seller);
+  const button = (value, label, on) => (
+    <button
+      type="button"
+      onClick={() => setMark(seller.username, mark === value ? null : value)}
+      aria-pressed={mark === value}
+      className={`rounded-full px-2 py-0.5 ring-1 ${mark === value ? on : "text-zinc-400 ring-white/10 hover:text-zinc-200"}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+      {mark === "trust" && <span className="text-emerald-300">You trust this seller.</span>}
+      {mark === "avoid" && <span className="text-rose-300">You avoid this seller.</span>}
+      <span className="ml-auto flex gap-1.5">
+        {button("trust", mark === "trust" ? "Trusted" : "Trust", "bg-emerald-400/15 text-emerald-200 ring-emerald-400/40")}
+        {button("avoid", mark === "avoid" ? "Avoided" : "Avoid", "bg-rose-400/15 text-rose-200 ring-rose-400/40")}
+      </span>
+    </div>
+  );
+}
+
+function SellerLine({ seller, check: autoCheck }) {
+  const { notes } = useSellerNotes();
+  const mark = sellerMark(notes, seller);
+  // Your own experience beats the feedback figures
+  const check = mark === "trust" ? { ...autoCheck, level: "trusted" } : autoCheck;
   const style = SELLER_STYLES[check.level];
   const feedback =
     seller?.feedbackScore != null
@@ -593,8 +626,20 @@ function SellerLine({ seller, check }) {
     </>
   );
 
-  if (check.level === "trusted") return <div className="px-0.5 text-xs">{body}</div>;
-  return <Note tone={check.level === "risky" ? "rose" : "amber"}>{body}</Note>;
+  if (check.level === "trusted") {
+    return (
+      <div className="px-0.5 text-xs">
+        {body}
+        <SellerMarks seller={seller} />
+      </div>
+    );
+  }
+  return (
+    <Note tone={check.level === "risky" ? "rose" : "amber"}>
+      {body}
+      <SellerMarks seller={seller} />
+    </Note>
+  );
 }
 
 function Figure({ label, value, hint, valueClass = "text-zinc-50" }) {

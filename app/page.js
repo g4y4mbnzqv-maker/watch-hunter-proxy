@@ -28,6 +28,8 @@ import { HIDDEN_GEMS } from "./client/useScanner";
 import { cleanTopBrands } from "./client/topBrands";
 import { POPULAR } from "@/lib/brands";
 import { formatGbp } from "./components/format";
+import { sellerMark, withSellerMark } from "@/lib/sellerNotes";
+import { SellerNotesContext } from "./client/sellerNotes";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
 import { GRADES } from "@/lib/condition";
@@ -59,6 +61,12 @@ export default function Home() {
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true, { sync: true });
   // Only listings eBay authenticates itself
   const [guaranteedOnly, setGuaranteedOnly] = useStoredState("wh-guaranteed-only", false, { sync: true });
+  // Sellers you trust or avoid, shared with every card
+  const [sellerNotes, setSellerNotes] = useStoredState("wh-seller-notes", {}, { sync: true });
+  const sellerNotesValue = useMemo(
+    () => ({ notes: sellerNotes, setMark: (username, mark) => setSellerNotes((current) => withSellerMark(current, username, mark)) }),
+    [sellerNotes, setSellerNotes]
+  );
   // Condition grades to show; every grade by default
   const [grades, setGrades] = useStoredState("wh-grades", ALL_GRADES, { sync: true });
   // Auctions, Buy It Now or both; both by default
@@ -191,9 +199,11 @@ export default function Home() {
   const live = useMemo(() => analysed.filter((item) => isLive(item, now)), [analysed, now]);
 
   const { shown, hidden, hiddenItems } = useMemo(() => {
-    const isRisky = (item) => hideRisky && item.sellerCheck.level === "risky";
+    const mark = (item) => sellerMark(sellerNotes, item.seller);
+    // A seller you trust is never hidden as risky
+    const isRisky = (item) => hideRisky && mark(item) !== "trust" && item.sellerCheck.level === "risky";
     const overBudget = (item) => settings.maxBudget > 0 && item.totalCost > settings.maxBudget;
-    const counts = { risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0 };
+    const counts = { avoided: 0, risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0 };
     const kept = [];
     // Hidden listings with the reason, for "Show hidden"
     const held = [];
@@ -204,14 +214,15 @@ export default function Home() {
 
     // Each hidden listing is counted once, under the first reason that applies
     for (const item of live) {
-      if (isRisky(item)) hide(item, "risky", "from a risky seller");
+      if (mark(item) === "avoid") hide(item, "avoided", "from a seller you avoid");
+      else if (isRisky(item)) hide(item, "risky", "from a risky seller");
       else if (overBudget(item)) hide(item, "overBudget", `over your ${formatGbp(settings.maxBudget)} limit`);
       else if (!grades.includes(item.conditionCheck.grade)) hide(item, "otherCondition", "in a condition you've filtered out");
       else if (guaranteedOnly && !item.authenticityGuarantee) hide(item, "notGuaranteed", "without Authenticity Guarantee");
       else kept.push(item);
     }
     return { shown: kept, hidden: counts, hiddenItems: held };
-  }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly]);
+  }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly, sellerNotes]);
 
   const { watchlist } = watch;
   const watchItems = useMemo(() => withTrends(watch.items, trends), [watch.items, trends]);
@@ -232,6 +243,7 @@ export default function Home() {
   }, [shown, scanner.scannedBrand, scanner.restoredAt, now]);
 
   return (
+    <SellerNotesContext.Provider value={sellerNotesValue}>
     <main className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
       {/* Soft glow behind the top of the page */}
       <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(16,185,129,0.20),transparent)]" />
@@ -399,6 +411,7 @@ export default function Home() {
         </>
       )}
     </main>
+    </SellerNotesContext.Provider>
   );
 }
 
