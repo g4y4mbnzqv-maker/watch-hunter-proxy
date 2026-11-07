@@ -84,6 +84,7 @@ export default function Results({
           label="Listings found"
           value={kept.length}
           note={hiddenNote([
+            hidden.avoided > 0 && `${hidden.avoided} from sellers you avoid`,
             hidden.risky > 0 && `${hidden.risky} from risky sellers`,
             hidden.overBudget > 0 && `${hidden.overBudget} over your ${formatGbp(maxBudget)} limit`,
             hidden.otherCondition > 0 && `${hidden.otherCondition} in other conditions`,
