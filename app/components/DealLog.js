@@ -8,6 +8,7 @@ import { weeklyReview } from "@/lib/review";
 import { draftDescription, draftPrices, draftTitle } from "@/lib/listingDraft";
 import { fetchPrices, titleModelKey } from "../client/priceCheck";
 import { readJson } from "../client/readJson";
+import EbayLister from "./EbayLister";
 import { resalePercentFor } from "@/lib/profit";
 import { REPORTING_AMOUNT, REPORTING_SALES, TRADING_ALLOWANCE, inTaxYear, platformReporting, salesTaxYears, taxYearSummary } from "@/lib/tax";
 import { MIN_SALES_FOR_RATIO, PLATFORMS, pastSales, dealFees, dealProfit, daysToSell, isSold, saleRatio, summarise, toCsv } from "@/lib/dealLog";
@@ -645,7 +646,7 @@ function Reminders({ reminders, onOpen, onDrop }) {
 }
 
 // A first draft of the listing for eBay or Vinted, to copy
-function ListingDraft({ deal, deals, settings }) {
+function ListingDraft({ deal, deals, settings, onChange }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState("ebay");
   const [copied, setCopied] = useState(null);
@@ -777,6 +778,15 @@ function ListingDraft({ deal, deals, settings }) {
         </button>
       </div>
       <pre className="whitespace-pre-wrap rounded-lg bg-black/30 p-2 font-sans leading-relaxed text-sky-50">{text}</pre>
+
+      {platform === "ebay" && (
+        <details className="mt-3 rounded-lg bg-black/20 p-2" open={Boolean(deal.ebayListingUrl)}>
+          <summary className="cursor-pointer font-medium text-sky-100">List it on eBay from here</summary>
+          <div className="mt-2">
+            <EbayLister deal={deal} title={title} text={text} prices={prices} onChange={onChange} />
+          </div>
+        </details>
+      )}
     </div>
   );
 }
@@ -844,7 +854,7 @@ function DealRow({ deal, deals, settings, open, onToggle, onChange, onRemove }) 
                 hint="So the app can remind you if it hasn't sold in three weeks."
               />
               <PhotoChecklist photos={deal.photos ?? {}} onChange={(photos) => onChange({ photos })} />
-              <ListingDraft deal={deal} deals={deals} settings={settings} />
+              <ListingDraft deal={deal} deals={deals} settings={settings} onChange={onChange} />
             </>
           )}
 

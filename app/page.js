@@ -95,8 +95,21 @@ export default function Home() {
   // A link shared to the app from the eBay app (Android's share menu) opens
   // the sales log and adds the watch
   const [sharedLink, setSharedLink] = useState(null);
+  // Back from signing in to eBay: say how it went, in the sales log
+  const [ebayNotice, setEbayNotice] = useState(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const ebay = params.get("ebay");
+    if (ebay) {
+      window.history.replaceState(null, "", window.location.pathname);
+      setEbayNotice(
+        ebay === "connected"
+          ? "Your eBay account is connected. Open a watch, then Draft a listing, to list it on eBay."
+          : "Connecting to eBay didn't work. Check the setup in the README's Listing on eBay section, then try again."
+      );
+      setMode("deals");
+      return;
+    }
     const shared = [params.get("url"), params.get("text"), params.get("title")].filter(Boolean).join(" ");
     if (!shared) return;
     window.history.replaceState(null, "", window.location.pathname);
@@ -298,6 +311,8 @@ export default function Home() {
           onWantedChange={setWanted}
         />
       )}
+
+      {mode === "deals" && ebayNotice && <Notice tone={ebayNotice.startsWith("Your") ? "amber" : "rose"}>{ebayNotice}</Notice>}
 
       {mode === "deals" && (
         <DealLog
