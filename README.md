@@ -175,3 +175,15 @@ Each scan makes 1 search call per listing type (2 for brands with known misspell
 ## Best time to sell
 
 The Prices tab shows which days and times of day auctions end with the best prices. Each recorded auction result (with its end time, from November 2026 on) is compared with the usual result for the same model, so dear models don't skew a day. Nothing shows until there are 30 such results, and a day or time needs 8 before it gets a figure (`lib/sellTiming.js`).
+
+## Listing on eBay
+
+From a watch in the Sales tab, **Draft a listing**, then **List it on eBay from here**, posts it to eBay as a Buy It Now listing through eBay's Sell APIs (`lib/ebaySell.js`, `/api/ebay/*`). You add your own photos (uploaded to eBay's picture service), check the drafted title and description (the [brackets] must be filled in first), and set the brand, model, reference, men's/women's, condition, price and offers. **Save on eBay** creates it without going live; **Put it live** publishes it and records the listing date, price and link on the watch.
+
+Setup, once:
+1. In the eBay developer portal, open **Application Keys**, then **User Tokens** next to your Production keyset, then **Get a Token from eBay via Your Application** and **Add eBay Redirect URL**. Set "Your auth accepted URL" to `https://<your app>/api/ebay/callback` and "Your auth declined URL" to `https://<your app>/`, add a privacy policy URL (your app's address will do), and save. Copy the **RuName** (eBay Redirect URL name) it shows.
+2. In Vercel, add `EBAY_RUNAME` with that value, and redeploy.
+3. On eBay, set up a postage, a payment and a returns policy (Account, then Business policies). The app uses the first of each.
+4. In the app, open **List it on eBay from here**, tap **Connect eBay account** and sign in. The first time, give the postcode you post from.
+
+The sign-in is kept as a refresh token in the database (`ebay_account` table), valid for about 18 months. Watches use eBay UK's Wristwatches category, which requires brand and department; condition is one of the seven eBay accepts for watches.
