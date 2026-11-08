@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AppHeader from "./components/AppHeader";
 import SearchPanel from "./components/SearchPanel";
 import ListingCheck from "./components/ListingCheck";
+import PhotoPricer from "./components/PhotoPricer";
 import Results from "./components/Results";
 import Watchlist from "./components/Watchlist";
 import PriceIndex from "./components/PriceIndex";
@@ -366,6 +367,7 @@ export default function Home() {
             onGradesChange={setGrades}
           />
 
+          {!scanner.loading && <PhotoPricer settings={settings} />}
           {!scanner.loading && <ListingCheck settings={settings} />}
 
           {scanner.error && <Notice tone="rose">{scanner.error}</Notice>}
