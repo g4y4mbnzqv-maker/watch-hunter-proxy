@@ -47,9 +47,17 @@ export default function PhotoPricer({ settings }) {
   const [byName, setByName] = useState(null);
   const [error, setError] = useState(null);
 
+  // Frees the browser's copy of a photo once it's no longer shown
+  function dropPreview() {
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  }
+
   function restart() {
     setStep("photo");
-    setPreview(null);
+    dropPreview();
     setMatches([]);
     setTicked(new Set());
     setName("");
@@ -63,6 +71,7 @@ export default function PhotoPricer({ settings }) {
     setStep("searching");
     try {
       const small = await shrink(file);
+      dropPreview();
       setPreview(URL.createObjectURL(small));
       const body = new FormData();
       body.append("photo", small, "watch.jpg");

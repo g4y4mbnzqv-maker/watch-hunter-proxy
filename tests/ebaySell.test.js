@@ -12,11 +12,13 @@ beforeEach(() => {
   process.env.EBAY_CLIENT_ID = "app-id";
   process.env.EBAY_CLIENT_SECRET = "cert-id";
   process.env.EBAY_RUNAME = "My_Name-Watch-PRD-runame";
+  process.env.APP_PASSCODE = "secret";
 });
 afterEach(() => {
   setTestDatabase(null);
   vi.unstubAllGlobals();
   delete process.env.EBAY_RUNAME;
+  delete process.env.APP_PASSCODE;
 });
 
 const good = {
@@ -49,6 +51,13 @@ function fakeEbay({ policies = true, location = true } = {}) {
 }
 
 describe("listing on eBay", () => {
+  it("refuses to sell without the passcode lock", async () => {
+    delete process.env.APP_PASSCODE;
+    expect(sellUnavailable()).toBe("no-passcode");
+    await expect(publish("123")).rejects.toThrow("isn't set up");
+    await expect(finishSignIn("code")).rejects.toThrow("isn't set up");
+  });
+
   it("needs the RuName setting before anything else", () => {
     delete process.env.EBAY_RUNAME;
     expect(sellUnavailable()).toBe("no-runame");

@@ -113,3 +113,8 @@ export function LoadingGrid() {
     </div>
   );
 }
+
+// Shown for a moment while a tab's code loads
+export function LoadingPanel() {
+  return <div className="mb-6 h-12 animate-pulse rounded-2xl bg-zinc-900/60 ring-1 ring-white/5" aria-hidden="true" />;
+}

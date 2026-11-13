@@ -101,6 +101,9 @@ export default function EbayLister({ deal, title: draftTitle, text, prices, onCh
     );
   }
   if (status.unavailable === "no-database") return <p className="text-sky-200/80">Listing on eBay needs the database connected.</p>;
+  if (status.unavailable === "no-passcode") {
+    return <p className="text-sky-200/80">Listing on eBay needs the app locked with APP_PASSCODE in Vercel, so only you can list.</p>;
+  }
   if (!status.connected) {
     return (
       <div className="space-y-2">

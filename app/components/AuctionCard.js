@@ -10,6 +10,7 @@ import { ebayImage } from "@/lib/images";
 import { readJson } from "../client/readJson";
 import { useSellerNotes } from "../client/sellerNotes";
 import { sellerMark } from "@/lib/sellerNotes";
+import { tooCheapAgainst } from "@/lib/fakes";
 
 const STATUS_STYLES = {
   deal: {
@@ -537,9 +538,9 @@ function FakeChecks({ item }) {
       )}
       {item.tooCheap && (
         <Note tone="rose">
-          Too cheap to trust: {formatGbp(item.totalCost)} is under half the cheapest of {item.comps.count} similar
-          listings ({formatGbp(item.comps.low)}). That usually means a fake, a part or a mistake. Ask for photos of the
-          caseback, serial and papers, and only pay through eBay.
+          Too cheap to trust: {formatGbp(item.totalCost)} is under half the cheapest of {tooCheapAgainst(item)?.count}{" "}
+          {tooCheapAgainst(item)?.what} ({formatGbp(tooCheapAgainst(item)?.low)}). That usually means a fake, a part or a
+          mistake. Ask for photos of the caseback, serial and papers, and only pay through eBay.
         </Note>
       )}
       {!item.tooCheap && item.oftenFaked && !item.authenticityGuarantee && (
