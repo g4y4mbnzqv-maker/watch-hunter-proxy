@@ -57,3 +57,14 @@ describe("Authenticity Guarantee", async () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("too cheap against auction results", () => {
+  it("still catches a fake when there are only auction results to go on", async () => {
+    const { isTooCheap, tooCheapAgainst } = await import("@/lib/fakes");
+    const item = { listingType: "BUY_IT_NOW", currentBid: 100, postage: 0, comps: null, sold: { low: 4000, count: 6, median: 5000 } };
+    expect(isTooCheap(item)).toBe(true);
+    expect(tooCheapAgainst(item)).toEqual({ low: 4000, count: 6, what: "recent auction results" });
+    expect(isTooCheap({ ...item, currentBid: 3000 })).toBe(false);
+    expect(tooCheapAgainst({ comps: null })).toBeNull();
+  });
+});

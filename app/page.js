@@ -1,16 +1,22 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import AppHeader from "./components/AppHeader";
 import SearchPanel from "./components/SearchPanel";
-import ListingCheck from "./components/ListingCheck";
-import PhotoPricer from "./components/PhotoPricer";
 import Results from "./components/Results";
-import Watchlist from "./components/Watchlist";
-import PriceIndex from "./components/PriceIndex";
-import DealLog from "./components/DealLog";
-import Dashboard from "./components/Dashboard";
-import SettingsPanel from "./components/SettingsPanel";
+import { LoadingPanel } from "./components/Placeholders";
+
+// Tabs and panels you may never open load their code when first shown, so
+// the app is ready sooner on a phone
+const lazy = (load) => dynamic(load, { loading: () => <LoadingPanel /> });
+const ListingCheck = lazy(() => import("./components/ListingCheck"));
+const PhotoPricer = lazy(() => import("./components/PhotoPricer"));
+const Watchlist = lazy(() => import("./components/Watchlist"));
+const PriceIndex = lazy(() => import("./components/PriceIndex"));
+const DealLog = lazy(() => import("./components/DealLog"));
+const Dashboard = lazy(() => import("./components/Dashboard"));
+const SettingsPanel = lazy(() => import("./components/SettingsPanel"));
 import EndingSoon from "./components/EndingSoon";
 import LimitBanner from "./components/LimitBanner";
 import ScanExplainer from "./components/ScanExplainer";
@@ -191,10 +197,26 @@ export default function Home() {
 
   // The welcome heading and how-it-works cards are for your first visits
   // only; once you've scanned, Find opens straight on the search box
-  const [hasScanned, setHasScanned] = useStoredState("wh-has-scanned", false);
+  // Starts as "scanned" so returning users never see it flash up; a first
+  // visit shows it once storage has been read
+  const [hasScanned, setHasScanned] = useState(true);
   useEffect(() => {
-    if (scanner.scannedBrand && !hasScanned) setHasScanned(true);
-  }, [scanner.scannedBrand, hasScanned, setHasScanned]);
+    try {
+      if (window.localStorage.getItem("wh-has-scanned") !== "true") setHasScanned(false);
+    } catch {
+      // Storage blocked: treat as a first visit
+      setHasScanned(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (!scanner.scannedBrand || hasScanned) return;
+    setHasScanned(true);
+    try {
+      window.localStorage.setItem("wh-has-scanned", "true");
+    } catch {
+      // Storage blocked: it shows again next visit
+    }
+  }, [scanner.scannedBrand, hasScanned]);
 
 
   const watch = useWatchlist({
