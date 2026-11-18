@@ -98,6 +98,7 @@ export default function Results({
             hidden.overBudget > 0 && `${hidden.overBudget} over your ${formatGbp(maxBudget)} limit`,
             hidden.otherCondition > 0 && `${hidden.otherCondition} in other conditions`,
             hidden.notGuaranteed > 0 && `${hidden.notGuaranteed} without Authenticity Guarantee`,
+            hidden.otherGender > 0 && `${hidden.otherGender} for the other gender`,
           ])}
         />
         <Stat label="With a resale estimate" value={stats.priced} />

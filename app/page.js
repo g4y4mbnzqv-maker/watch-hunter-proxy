@@ -37,6 +37,7 @@ import { POPULAR } from "@/lib/brands";
 import { formatGbp } from "./components/format";
 import { sellerMark, withSellerMark } from "@/lib/sellerNotes";
 import { buildTaste } from "@/lib/forYou";
+import { fitsGender } from "@/lib/caseDetails";
 import { SellerNotesContext } from "./client/sellerNotes";
 import { DEFAULT_SETTINGS } from "@/lib/profit";
 import { modelKey } from "@/lib/models";
@@ -69,6 +70,8 @@ export default function Home() {
   const [hideRisky, setHideRisky] = useStoredState("wh-hide-risky", true, { sync: true });
   // Only listings eBay authenticates itself
   const [guaranteedOnly, setGuaranteedOnly] = useStoredState("wh-guaranteed-only", false, { sync: true });
+  // All watches, men's (and titles that don't say) or ladies' only
+  const [gender, setGender] = useStoredState("wh-gender", "all", { sync: true });
   // Sellers you trust or avoid, shared with every card
   const [sellerNotes, setSellerNotes] = useStoredState("wh-seller-notes", {}, { sync: true });
   const sellerNotesValue = useMemo(
@@ -248,7 +251,7 @@ export default function Home() {
     // A seller you trust is never hidden as risky
     const isRisky = (item) => hideRisky && mark(item) !== "trust" && item.sellerCheck.level === "risky";
     const overBudget = (item) => settings.maxBudget > 0 && item.totalCost > settings.maxBudget;
-    const counts = { avoided: 0, risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0 };
+    const counts = { avoided: 0, risky: 0, overBudget: 0, otherCondition: 0, notGuaranteed: 0, otherGender: 0 };
     const kept = [];
     // Hidden listings with the reason, for "Show hidden"
     const held = [];
@@ -264,10 +267,11 @@ export default function Home() {
       else if (overBudget(item)) hide(item, "overBudget", `over your ${formatGbp(settings.maxBudget)} limit`);
       else if (!grades.includes(item.conditionCheck.grade)) hide(item, "otherCondition", "in a condition you've filtered out");
       else if (guaranteedOnly && !item.authenticityGuarantee) hide(item, "notGuaranteed", "without Authenticity Guarantee");
+      else if (!fitsGender(item.title, gender)) hide(item, "otherGender", gender === "ladies" ? "not a ladies' watch" : "a ladies' watch");
       else kept.push(item);
     }
     return { shown: kept, hidden: counts, hiddenItems: held };
-  }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly, sellerNotes]);
+  }, [live, hideRisky, settings.maxBudget, grades, guaranteedOnly, sellerNotes, gender]);
 
   const { watchlist } = watch;
   // What you go for, from your saves and buys, for the "For you" sort
@@ -383,6 +387,8 @@ export default function Home() {
             onHideRiskyChange={setHideRisky}
             guaranteedOnly={guaranteedOnly}
             onGuaranteedOnlyChange={setGuaranteedOnly}
+            gender={gender}
+            onGenderChange={setGender}
             listingTypes={listingTypes}
             onListingTypesChange={setListingTypes}
             grades={grades}

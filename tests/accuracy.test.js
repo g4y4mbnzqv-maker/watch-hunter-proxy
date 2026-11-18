@@ -87,3 +87,47 @@ describe("reference with too few listings", () => {
     expect(extractModelRef("Seiko Ladies Gold Tone Quartz Dress Watch PWS1936")).toBeNull();
   });
 });
+
+describe("bracelets sold on their own", () => {
+  it("drops bracelets, links and clasps", () => {
+    for (const title of [
+      "Genuine Seiko Jubilee Bracelet 22mm for SKX007 SKX009",
+      "Rolex Oyster bracelet 93150 end links 501B",
+      "Stainless steel bracelet to fit Seiko SKX 22mm",
+      "Seiko SKX007 replacement bracelet",
+      "Tudor Black Bay bracelet links x3",
+      "Omega deployant clasp 18mm",
+      "Rolex jubilee bracelet 62510H 20mm",
+      "Strapcode super oyster bracelet fits Seiko Turtle",
+    ]) expect(isJunk(title), title).toBe(true);
+  });
+
+  it("keeps watches that come on a bracelet", () => {
+    for (const title of [
+      "Rolex Datejust 16234 Jubilee bracelet",
+      "Seiko SKX007 on jubilee bracelet with spare links",
+      "Omega Seamaster 300m 2531.80 full links box",
+      "Tudor Black Bay 58 bracelet 39mm",
+      "Casio G-Shock with metal bracelet",
+      "Citizen Eco-Drive bracelet 40mm",
+    ]) expect(isJunk(title), title).toBe(false);
+  });
+});
+
+describe("gender", () => {
+  it("reads men's, ladies' and unisex from the title", async () => {
+    const { genderOf, fitsGender } = await import("@/lib/caseDetails");
+    expect(genderOf("Seiko 5 Mens Automatic")).toBe("mens");
+    expect(genderOf("Gents Rotary dress watch")).toBe("mens");
+    expect(genderOf("Womens Citizen Eco-Drive")).toBe("ladies");
+    expect(genderOf("Omega Ladies' De Ville")).toBe("ladies");
+    expect(genderOf("Swatch unisex")).toBe("unisex");
+    expect(genderOf("His and hers: mens and ladies Seiko pair")).toBe("unisex");
+    expect(genderOf("Seiko SKX007 diver")).toBeNull();
+    expect(fitsGender("Seiko SKX007 diver", "mens")).toBe(true);
+    expect(fitsGender("Omega Ladies' De Ville", "mens")).toBe(false);
+    expect(fitsGender("Seiko SKX007 diver", "ladies")).toBe(false);
+    expect(fitsGender("Swatch unisex", "ladies")).toBe(true);
+    expect(fitsGender("anything", "all")).toBe(true);
+  });
+});

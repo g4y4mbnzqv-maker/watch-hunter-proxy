@@ -8,6 +8,11 @@ import ListingTypeFilter from "./ListingTypeFilter";
 import { GRADES } from "@/lib/condition";
 
 const GOOD_OR_BETTER = ["new", "excellent", "good"];
+const GENDER_CHOICES = [
+  ["all", "Anyone"],
+  ["mens", "Men's"],
+  ["ladies", "Ladies'"],
+];
 
 // The search box keeps its own text, so typing only redraws this panel
 export default function SearchPanel({
@@ -30,6 +35,8 @@ export default function SearchPanel({
   onListingTypesChange,
   grades,
   onGradesChange,
+  gender = "all",
+  onGenderChange,
 }) {
   const [brand, setBrand] = useState("Seiko");
   const busy = loading || paused;
@@ -102,7 +109,7 @@ export default function SearchPanel({
       <details className="group mt-4 border-t border-white/5 pt-3 [&_summary::-webkit-details-marker]:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs">
           <span className="font-medium text-zinc-300">Filters</span>
-          <span className="truncate text-zinc-500">{filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly })}</span>
+          <span className="truncate text-zinc-500">{filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly, gender })}</span>
           <span aria-hidden="true" className="text-zinc-500 transition group-open:rotate-180">▾</span>
         </summary>
       <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -121,6 +128,23 @@ export default function SearchPanel({
         </Checkbox>
       </div>
 
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="Men's or ladies'">
+        <span className="mr-1 text-zinc-500">For:</span>
+        {GENDER_CHOICES.map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={gender === key}
+            onClick={() => onGenderChange?.(key)}
+            className={`rounded-full px-3 py-1 ring-1 ${
+              gender === key ? "bg-emerald-400/15 text-emerald-200 ring-emerald-400/40" : "text-zinc-400 ring-white/10 hover:text-zinc-200"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-3">
         <ListingTypeFilter selected={listingTypes} onChange={onListingTypesChange} />
       </div>
@@ -132,7 +156,7 @@ export default function SearchPanel({
 }
 
 // The filters in one line, so they can stay folded away
-export function filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly }) {
+export function filterSummary({ listingTypes, grades, includeJunk, hideRisky, guaranteedOnly, gender }) {
   const types =
     listingTypes.length > 1 ? "Auctions and Buy It Now" : listingTypes[0] === "AUCTION" ? "Auctions only" : "Buy It Now only";
   const conditions = grades.length >= GRADES.length ? "any condition" : `${grades.length} of ${GRADES.length} conditions`;
@@ -140,6 +164,8 @@ export function filterSummary({ listingTypes, grades, includeJunk, hideRisky, gu
     includeJunk && "parts included",
     !hideRisky && "risky sellers shown",
     guaranteedOnly && "Authenticity Guarantee only",
+    gender === "mens" && "men's",
+    gender === "ladies" && "ladies' only",
   ].filter(Boolean);
   return [types, conditions, ...extras].join(", ");
 }

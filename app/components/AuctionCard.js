@@ -11,6 +11,7 @@ import { readJson } from "../client/readJson";
 import { useSellerNotes } from "../client/sellerNotes";
 import { sellerMark } from "@/lib/sellerNotes";
 import { tooCheapAgainst } from "@/lib/fakes";
+import { GENDER_LABELS, genderOf } from "@/lib/caseDetails";
 
 const STATUS_STYLES = {
   deal: {
@@ -156,6 +157,7 @@ function AuctionCard({ item, now, onSetResale, saved, onToggleSave, onLogPurchas
             {item.brand && <Chip tone="emerald">{item.brand}</Chip>}
             {item.modelRef && <Chip mono>{item.modelRef}</Chip>}
             {!item.modelRef && item.modelName && <Chip>{item.modelName}</Chip>}
+            {genderOf(item.title) && <Chip>{GENDER_LABELS[genderOf(item.title)]}</Chip>}
             <span className="px-0.5">
               {isBuyItNow
                 ? item.bestOffer
